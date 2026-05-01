@@ -50,8 +50,11 @@ export async function runDoctor() {
   console.log();
 
   if (cfg) {
-    console.log(chalk.dim('  Negócio:  ') + chalk.bold(cfg.business?.nichoCustom || cfg.business?.nicho || '—'));
-    console.log(chalk.dim('  Limite:   ') + `R$ ${cfg.limits?.dailyBudgetMax}/dia`);
+    console.log(chalk.dim('  Operador:  ') + chalk.bold(cfg.operador?.nome || '—'));
+    console.log(chalk.dim('  Produtos:  ') + (cfg.operador?.produtosAtivos?.length
+      ? `${cfg.operador.produtosAtivos.length} ativo(s)`
+      : 'todos liberados'));
+    console.log(chalk.dim('  Limite:    ') + `R$ ${cfg.limits?.dailyBudgetMax}/dia`);
     console.log();
   }
 

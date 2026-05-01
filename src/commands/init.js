@@ -10,32 +10,31 @@ import { renderAll } from '../installer/render-templates.js';
 import { DESKTOP_DIR } from '../lib/paths.js';
 import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
 
-const NICHOS = [
-  { value: 'pizzaria',     label: 'Pizzaria / Delivery' },
-  { value: 'salao',        label: 'Salão de Beleza' },
-  { value: 'dentista',     label: 'Dentista / Clínica' },
-  { value: 'academia',     label: 'Academia / Personal' },
-  { value: 'loja',         label: 'Loja Física / Varejo' },
-  { value: 'ecommerce',    label: 'E-commerce' },
-  { value: 'imobiliaria',  label: 'Imobiliária / Corretor' },
-  { value: 'mecanica',     label: 'Mecânica / Auto' },
-  { value: 'estetica',     label: 'Estética / Spa' },
-  { value: 'outro',        label: 'Outro (descrevo na próxima)' },
-];
-
-const OBJETIVOS = [
-  { value: 'whatsapp',     label: 'Receber mensagens no WhatsApp' },
-  { value: 'agendamento',  label: 'Agendamento online' },
-  { value: 'leads',        label: 'Leads / Formulário' },
-  { value: 'vendas',       label: 'Vendas pelo site (e-commerce)' },
-  { value: 'visitas',      label: 'Visitas à loja física' },
+// Lista de produtos pré-cadastrados — precisa bater com templates/playbooks/*.yaml
+const PRODUTOS = [
+  { value: 'hay-hair',          label: 'Hay Hair' },
+  { value: 'movi-mint',         label: 'Movi Mint' },
+  { value: 'velmo-black-drink', label: 'Velmo Black Drink (Morango/Tangerina)' },
+  { value: 'velmo-black',       label: 'Velmo Black' },
+  { value: 'ton',               label: 'Ton  (regras especiais)' },
+  { value: 'creatina-gummy',    label: 'Creatina Gummy' },
+  { value: 'creagym',           label: 'Creagym' },
+  { value: 'celuglow',          label: 'Celuglow' },
+  { value: 'calminol',          label: 'Calminol' },
+  { value: 'fiber-slim',        label: 'Fiber Slim' },
+  { value: 'clarize',           label: 'Clarize' },
+  { value: 'termo-drink',       label: 'Termo Drink' },
+  { value: 'skin-fit',          label: 'Skin Fit' },
+  { value: 'inti-feme',         label: 'Inti Feme' },
+  { value: 'inti-masc',         label: 'Inti Masc' },
+  { value: 'quero-mais',        label: 'Quero +' },
 ];
 
 export async function runInit() {
   console.clear();
-  showBanner('Instalação · vamos preparar tudo em ~3 minutos');
+  showBanner('Instalação · ~2 minutos');
 
-  p.intro(chalk.bgBlue.white(' ZapSuite Meta · setup '));
+  p.intro(chalk.bgMagenta.white(' ZapSuite Meta · setup '));
 
   await ensureAppDir();
 
@@ -53,7 +52,7 @@ export async function runInit() {
 
   // ---------- 2. Licença ----------
   const licenseKey = await p.text({
-    message: 'Cole sua licença Easy4u (começa com EZ4U- ou DEV- pra modo desenvolvedor):',
+    message: 'Cole sua licença Easy4u (ou DEV-XXXX pra modo desenvolvedor):',
     placeholder: 'EZ4U-XXXX-XXXX-XXXX',
     validate: v => (!v || v.length < 6 ? 'licença inválida' : undefined),
   });
@@ -72,51 +71,31 @@ export async function runInit() {
     )
   );
 
-  // ---------- 3. Briefing ----------
-  p.note('Agora 6 perguntas rápidas sobre seu negócio.\nIsso vira o cérebro da IA pra todas as campanhas.', chalk.cyan('briefing'));
+  // ---------- 3. Perfil de operação (curto) ----------
+  p.note(
+    'Vou perguntar 3 coisas pra deixar tudo do seu jeito.',
+    chalk.cyan('briefing')
+  );
 
-  const nicho = await p.select({ message: 'Qual seu nicho?', options: NICHOS });
-  if (p.isCancel(nicho)) throw new Error('cancelled');
-
-  let nichoCustom = null;
-  if (nicho === 'outro') {
-    nichoCustom = await p.text({ message: 'Descreva seu nicho em 1 linha:', placeholder: 'Ex.: Cafeteria especialty no centro' });
-    if (p.isCancel(nichoCustom)) throw new Error('cancelled');
-  }
-
-  const cidade = await p.text({
-    message: 'Cidade e raio de atendimento:',
-    placeholder: 'Ex.: Juazeiro do Norte/CE · raio 5 km',
+  const operadorNome = await p.text({
+    message: 'Como você quer ser chamado? (aparece no topo do menu)',
+    placeholder: 'Ex.: Time Easy4u · Ana · Operação 1',
     validate: v => (!v ? 'obrigatório' : undefined),
   });
-  if (p.isCancel(cidade)) throw new Error('cancelled');
+  if (p.isCancel(operadorNome)) throw new Error('cancelled');
 
-  const ticket = await p.text({
-    message: 'Ticket médio (R$):',
-    placeholder: '50',
-    validate: v => (Number.isNaN(Number(v)) ? 'use só números' : undefined),
+  const produtosAtivos = await p.multiselect({
+    message: 'Quais produtos você promove? (espaço pra marcar, enter pra confirmar)',
+    options: PRODUTOS,
+    required: false,
+    initialValues: [],
   });
-  if (p.isCancel(ticket)) throw new Error('cancelled');
-
-  const objetivo = await p.select({ message: 'Objetivo principal das campanhas?', options: OBJETIVOS });
-  if (p.isCancel(objetivo)) throw new Error('cancelled');
-
-  const horario = await p.text({
-    message: 'Horário de atendimento:',
-    placeholder: 'Seg–Sáb · 9h às 22h',
-  });
-  if (p.isCancel(horario)) throw new Error('cancelled');
-
-  const diferencial = await p.text({
-    message: 'Seu diferencial em 1 frase:',
-    placeholder: 'Ex.: a única pizzaria do bairro com forno a lenha',
-  });
-  if (p.isCancel(diferencial)) throw new Error('cancelled');
+  if (p.isCancel(produtosAtivos)) throw new Error('cancelled');
 
   const budgetTeto = await p.text({
-    message: chalk.yellow('Limite máximo de gasto diário (R$) — a IA NUNCA vai passar disso:'),
-    placeholder: '100',
-    validate: v => (Number.isNaN(Number(v)) ? 'use só números' : undefined),
+    message: chalk.yellow('Limite máximo de gasto diário (R$) — somando TODAS as campanhas ativas:'),
+    placeholder: '300',
+    validate: v => (Number.isNaN(Number(v)) || Number(v) <= 0 ? 'use só números, > 0' : undefined),
   });
   if (p.isCancel(budgetTeto)) throw new Error('cancelled');
 
@@ -130,14 +109,9 @@ export async function runInit() {
   const config = {
     licenseKey,
     plan: lic.plan,
-    business: {
-      nicho,
-      nichoCustom,
-      cidade,
-      ticket: Number(ticket),
-      objetivo,
-      horario,
-      diferencial,
+    operador: {
+      nome: operadorNome,
+      produtosAtivos: produtosAtivos.length ? produtosAtivos : null, // null = todos liberados
     },
     limits: {
       dailyBudgetMax: Number(budgetTeto),
@@ -157,22 +131,24 @@ export async function runInit() {
   await renderAll({
     ...config,
     today,
-    nichoLabel: NICHOS.find(n => n.value === nicho)?.label || nichoCustom || nicho,
-    objetivoLabel: OBJETIVOS.find(o => o.value === objetivo)?.label || objetivo,
+    produtosAtivosLabels: (produtosAtivos.length
+      ? PRODUTOS.filter(p => produtosAtivos.includes(p.value)).map(p => p.label)
+      : ['(todos os 16 produtos liberados)']
+    ),
   });
   s3.stop(chalk.green('Arquivos gerados em ~/.zapsuite-meta/'));
 
-  // ---------- 6. MCP da Meta no Claude Code ----------
+  // ---------- 7. MCP da Meta no Claude Code ----------
   const s4 = p.spinner();
   s4.start('Registrando MCP da Meta no Claude Code (mcp.facebook.com/ads)');
   const mcp = registerMetaMcp('user');
   if (mcp.ok) s4.stop(chalk.green('MCP da Meta registrado'));
   else s4.stop(chalk.yellow(`MCP não registrado automaticamente: ${mcp.error}`));
 
-  // ---------- 7. Atalho no Desktop ----------
+  // ---------- 8. Atalho no Desktop ----------
   await maybeCreateShortcut();
 
-  // ---------- 8. Final ----------
+  // ---------- 9. Final ----------
   p.outro(
     [
       chalk.green.bold('Pronto!'),
@@ -181,7 +157,7 @@ export async function runInit() {
       '',
       `  1. Coloque suas fotos/vídeos em ${chalk.cyan(MIDIAS_DIR + '/upload/')}`,
       `     ${chalk.dim('(o menu tem opção pra abrir essa pasta)')}`,
-      `  2. Rode ${chalk.cyan('zapsuite-meta')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
+      `  2. Rode ${chalk.cyan('zsm')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
       `  3. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
       `  4. Na primeira tool da Meta, o Claude Code abre o navegador pra você`,
       `     ${chalk.dim('autorizar o Facebook (uma única vez).')}`,

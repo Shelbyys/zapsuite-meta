@@ -19,7 +19,7 @@ Leia `~/.zapsuite-meta/playbooks/{playbook}.yaml`. Se o arg `playbook=` não
 veio, liste os disponíveis e pergunte qual.
 
 Os campos relevantes são:
-- `nome`, `estrutura` (ex: "1-5-1"), `objetivo` (POST_ENGAGEMENT)
+- `nome`, `estrutura` (ex: "1-5-1"), `objetivo` (`OUTCOME_ENGAGEMENT` — formato ODAX da Meta)
 - `orcamento_tipo: ABO` (ad set budget optimization — orçamento por conjunto)
 - `orcamento`: `diario_total_min/max`, `por_conjunto_min/max`, `num_conjuntos`, `num_anuncios_por_conjunto`
 - `publico`: `generos`, `idade_min`, `idade_max`, `idade_max_aberta` (= 65+), `estilo: aberto`
@@ -84,17 +84,40 @@ idênticos no ABO pra Meta achar quem entrega melhor pra mesma criativo.
 
 ### 7. Após "sim" explícito, suba na Meta nesta ordem
 
-1. **Upload da mídia 1 vez** via tool da MCP Facebook (`mcp__claude_ai_META__ads_*`).
-   Registre o `image_hash` ou `video_id`.
-2. **Crie a campanha** (`ads_create_campaign`) com objetivo POST_ENGAGEMENT,
-   sem CBO (`buying_type=AUCTION`, sem `budget_*` na campanha).
-3. **Crie os N conjuntos** (`ads_create_ad_set`), cada um com:
-   - `daily_budget` = `por_conjunto` (em centavos: ×100)
-   - `optimization_goal=POST_ENGAGEMENT`
-   - `targeting`: gênero/idade do playbook, sem `interests`
-   - `placements`: Story + Feed (Facebook + Instagram)
-4. **Crie 1 anúncio em cada conjunto** (`ads_create_ad`) referenciando o mesmo
-   `image_hash`/`video_id` e o mesmo texto.
+**LIMITAÇÃO REAL DA MCP FACEBOOK:** ela não tem tool dedicada de
+`ads_upload_image/video`. O upload tem que vir do `creative` spec do
+`mcp__meta__ads_create_ad`, que aceita uma das três formas:
+  - `creative.object_story_spec.link_data.image_hash` (precisa hash já existente)
+  - `creative.image_url` (URL pública da imagem)
+  - `creative.object_story_id` (referenciar post existente da página)
+
+**Fluxo realista (até a MCP ganhar upload direto):**
+
+a. **Cliente sobe a mídia 1 vez no Gerenciador de Anúncios** (Biblioteca de
+   Mídia) — `https://business.facebook.com/adsmanager/`. Pega o
+   `image_hash` (clica na imagem → painel direito mostra) ou faz post
+   normal na página e pega o `post_id`.
+b. **Pergunte qual hash/post_id ele tem em mãos.** Se ele não tem nada,
+   pare e oriente abrir a Biblioteca de Mídia da Meta primeiro.
+c. **Crie a campanha** (`mcp__meta__ads_create_campaign`):
+   - `objective: "OUTCOME_ENGAGEMENT"` (ODAX — legacy POST_ENGAGEMENT é rejeitado)
+   - `buying_type: "AUCTION"` (required)
+   - SEM `campaign_daily_budget`/`campaign_lifetime_budget`/`campaign_bid_strategy` (pra ficar ABO)
+   - `special_ad_categories: "[]"`
+d. **Crie os N conjuntos** (`mcp__meta__ads_create_ad_set`), cada um:
+   - `campaign_id` da campanha criada
+   - `daily_budget`: valor em **centavos** (R$ 7,00 → `700`)
+   - `billing_event: "POST_ENGAGEMENT"`
+   - `optimization_goal: "POST_ENGAGEMENT"`
+   - `targeting`: JSON com `geo_locations`, `genders` (1=M, 2=F), `age_min`, `age_max`. Sem `interests`.
+   - `placement` (JSON): `{"facebook_positions":["feed","story"],"instagram_positions":["stream","story"]}`
+   - `start_time` ISO 8601 se quiser agendar
+e. **Crie 1 anúncio em cada conjunto** (`mcp__meta__ads_create_ad`):
+   - `ad_set_id` do conjunto
+   - `creative` (JSON string): spec referenciando `image_hash` ou `object_story_id`
+f. Tudo é criado em **PAUSED** por default. Pra publicar, cliente confirma
+   de novo e você usa `mcp__meta__ads_activate_entity` na ordem campanha
+   → ad sets → ads.
 
 ### 8. Salve manifest
 Em `~/.zapsuite-meta/campanhas/{data}_{playbook}/manifest.json`:

@@ -17,6 +17,6 @@ description: Cria uma variante A/B nova num anúncio existente, usando outra mí
 6. Mostre preview em texto (caminho da mídia + copy).
 7. Pergunte: "Posso subir como variação A/B no anúncio X?"
 8. Após "sim":
-   - Upload da mídia na Meta (`mcp__claude_ai_META__ads_upload_*`) → recebe hash/ID.
-   - Cria o ad novo (`mcp__claude_ai_META__ads_create_ad`) referenciando o hash.
+   - Upload da mídia na Meta (`mcp__meta__ads_upload_*`) → recebe hash/ID.
+   - Cria o ad novo (`mcp__meta__ads_create_ad`) referenciando o hash.
 9. Atualize o manifest da campanha em `~/.zapsuite-meta/campanhas/.../manifest.json`.

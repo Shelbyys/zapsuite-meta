@@ -4,7 +4,7 @@ tipo: produto_afiliado
 fonte_orientacao: "Estrutura validada · documento Easy4u 2026-05"
 
 estrutura: "1-5-1"
-objetivo: POST_ENGAGEMENT
+objetivo: OUTCOME_ENGAGEMENT       # ODAX (formato novo); legacy POST_ENGAGEMENT é rejeitado pela API
 orcamento_tipo: ABO
 
 orcamento:

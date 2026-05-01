@@ -10,6 +10,15 @@ import { runInit } from './init.js';
 import { listAvailableMidias, openMidiasFolder, MIDIAS_DIR, UPLOAD_DIR } from '../lib/midias.js';
 import { APP_DIR } from '../lib/paths.js';
 import { checkForUpdateCached } from '../lib/updater.js';
+import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
+
+// Whitelist de IDs de playbook válidos — bate com PLAYBOOKS abaixo. Bloqueia
+// shell injection caso playbookId venha alterado.
+const VALID_PLAYBOOKS = new Set([
+  'hay-hair', 'movi-mint', 'velmo-black-drink', 'velmo-black', 'ton',
+  'creatina-gummy', 'creagym', 'celuglow', 'calminol', 'fiber-slim',
+  'clarize', 'termo-drink', 'skin-fit', 'inti-feme', 'inti-masc', 'quero-mais',
+]);
 
 // Playbooks pré-programados — estrutura validada (documento Easy4u 2026-05).
 // Formato: 1-X-1 em ABO (1 campanha · X conjuntos · 1 anúncio cada).
@@ -44,9 +53,11 @@ export async function runMenu() {
   }
 
   showHeader(
-    cfg.business?.nichoCustom || cfg.business?.nicho?.toUpperCase() || 'ZapSuite Meta',
-    cfg.business?.cidade,
-    `R$ ${cfg.limits?.dailyBudgetMax}/dia (limite)`
+    cfg.operador?.nome || 'ZapSuite Meta',
+    cfg.operador?.produtosAtivos?.length
+      ? `${cfg.operador.produtosAtivos.length} produto${cfg.operador.produtosAtivos.length === 1 ? '' : 's'} ativo${cfg.operador.produtosAtivos.length === 1 ? '' : 's'}`
+      : '16 produtos liberados',
+    `R$ ${cfg.limits?.dailyBudgetMax}/dia (limite hard)`
   );
 
   // Check de update em background (não bloqueia o menu)
@@ -179,6 +190,10 @@ async function flowNovaCampanha(cfg) {
   }
 
   // delega — Claude Code monta a árvore Meta seguindo o YAML
+  if (!VALID_PLAYBOOKS.has(playbookId)) {
+    p.note(`playbook desconhecido: ${playbookId}`, chalk.red('erro'));
+    return;
+  }
   await delegateToClaude(`/nova-campanha playbook=${playbookId}`);
 }
 
@@ -255,14 +270,23 @@ async function openClaudeInteractive() {
 }
 
 function openClaudeWith(initialPrompt) {
+  // Guard: cliente pode ter desinstalado o Claude Code depois do init.
+  if (!isClaudeCodeInstalled()) {
+    console.log();
+    console.log(chalk.red('  Claude Code não tá instalado nesta máquina.'));
+    console.log(chalk.dim('  Pra instalar:'));
+    console.log(chalk.cyan('    npm i -g @anthropic-ai/claude-code'));
+    console.log(chalk.dim('  Depois roda `zsm doctor` pra confirmar e tenta de novo.\n'));
+    return Promise.resolve();
+  }
   return new Promise(resolve => {
     const args = initialPrompt ? ['-p', initialPrompt] : [];
-    const cwd = `${process.env.HOME}/.zapsuite-meta`;
+    const cwd = APP_DIR;
     const child = spawn('claude', args, { stdio: 'inherit', cwd });
     child.on('exit', () => resolve());
     child.on('error', err => {
-      console.log(chalk.red(`\nNão consegui abrir o Claude Code: ${err.message}`));
-      console.log(chalk.dim('Rode `zapsuite-meta doctor` pra checar.'));
+      console.log(chalk.red(`\n  Não consegui abrir o Claude Code: ${err.message}`));
+      console.log(chalk.dim('  Rode `zsm doctor` pra checar.\n'));
       resolve();
     });
   });

@@ -14,7 +14,7 @@ estruturas_alternativas:
     por_conjunto_max: 15.00
 
 estrutura_default: "1-5-1"   # default; cliente escolhe a outra se quiser
-objetivo: POST_ENGAGEMENT
+objetivo: OUTCOME_ENGAGEMENT       # ODAX (formato novo); legacy POST_ENGAGEMENT é rejeitado pela API
 orcamento_tipo: ABO
 
 orcamento:

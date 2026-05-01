@@ -9,18 +9,11 @@ import { ensureMidiasFolders } from '../src/lib/midias.js';
 const fakeCfg = {
   licenseKey: 'DEV-SMOKE-0001',
   plan: 'dev',
-  business: {
-    nicho: 'pizzaria',
-    nichoLabel: 'Pizzaria / Delivery',
-    nichoCustom: null,
-    cidade: 'Juazeiro do Norte/CE · raio 5km',
-    ticket: 50,
-    objetivo: 'whatsapp',
-    objetivoLabel: 'Receber mensagens no WhatsApp',
-    horario: 'Seg–Dom · 18h às 23h',
-    diferencial: 'única pizzaria do bairro com forno a lenha',
+  operador: {
+    nome: 'Time DEV (smoke)',
+    produtosAtivos: ['hay-hair', 'movi-mint', 'ton'],
   },
-  limits: { dailyBudgetMax: 100 },
+  limits: { dailyBudgetMax: 300 },
   telemetry: true,
   installedAt: new Date().toISOString(),
 };
@@ -31,8 +24,7 @@ await patchConfig(fakeCfg);
 await renderAll({
   ...fakeCfg,
   today: new Date().toISOString().slice(0, 10),
-  nichoLabel: fakeCfg.business.nichoLabel,
-  objetivoLabel: fakeCfg.business.objetivoLabel,
+  produtosAtivosLabels: ['Hay Hair', 'Movi Mint', 'Ton  (regras especiais)'],
 });
 console.log('\n--- DOCTOR ---\n');
 await runDoctor();
