@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { showBanner, showHeader } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
 import { runInit } from './init.js';
+import { listAvailableMidias, openMidiasFolder, MIDIAS_DIR, UPLOAD_DIR } from '../lib/midias.js';
 
 const PLAYBOOKS = [
   { value: 'lead-whatsapp', label: '📱  Lead WhatsApp', hint: 'mais usado' },
@@ -42,15 +43,19 @@ export async function runMenu() {
   );
 
   while (true) {
+    const midias = await listAvailableMidias();
+    const totalMidias = midias.length;
+
     const action = await p.select({
       message: 'O que você quer fazer?',
       options: [
         { value: 'nova',     label: '🚀  Subir nova campanha' },
+        { value: 'midias',   label: `📁  Minhas mídias (${totalMidias} arquivo${totalMidias === 1 ? '' : 's'})` },
         { value: 'rel-hoje', label: '📊  Ver como tão meus anúncios (hoje)' },
         { value: 'rel-7',    label: '📈  Relatório dos últimos 7 dias' },
         { value: 'top',      label: '🏆  Top criativos (qual tá vendendo)' },
         { value: 'otimizar', label: '🔧  Otimizar campanhas que tão rodando' },
-        { value: 'criativo', label: '🎨  Trocar criativo (gerar imagem nova)' },
+        { value: 'criativo', label: '🎨  Trocar criativo de um anúncio' },
         { value: 'pausar',   label: '⏸   Pausar uma campanha' },
         { value: 'claude',   label: '💬  Abrir Claude Code (conversa livre)' },
         { value: 'config',   label: '⚙️   Configurações' },
@@ -64,6 +69,7 @@ export async function runMenu() {
     }
 
     if (action === 'nova')     await flowNovaCampanha(cfg);
+    if (action === 'midias')   await flowMidias();
     if (action === 'rel-hoje') await delegateToClaude('/relatorio-hoje');
     if (action === 'rel-7')    await delegateToClaude('/relatorio-7dias');
     if (action === 'top')      await delegateToClaude('/top-criativos');
@@ -111,6 +117,28 @@ async function flowNovaCampanha(cfg) {
   });
   if (p.isCancel(oferta)) return;
 
+  // checa que tem mídia antes de delegar
+  const midias = await listAvailableMidias();
+  if (midias.length === 0) {
+    p.note(
+      [
+        `Você ainda não colocou nenhuma foto/vídeo na pasta:`,
+        `  ${chalk.cyan(UPLOAD_DIR)}`,
+        '',
+        'Vou abrir o Finder. Arraste suas mídias pra lá e volta.',
+      ].join('\n'),
+      chalk.yellow('preciso das suas mídias')
+    );
+    openMidiasFolder('upload');
+    const ok = await p.confirm({ message: 'Já colocou as mídias? Continuar?', initialValue: true });
+    if (p.isCancel(ok) || !ok) return;
+    const after = await listAvailableMidias();
+    if (after.length === 0) {
+      p.note('Ainda vazia. Volta quando tiver pelo menos 1 foto.', chalk.red('parando aqui'));
+      return;
+    }
+  }
+
   const duracao = await p.select({
     message: 'Por quanto tempo a campanha roda?',
     options: [
@@ -125,6 +153,43 @@ async function flowNovaCampanha(cfg) {
   // Delega para o Claude Code com argumentos prontos.
   const cmd = `/nova-campanha playbook=${playbook} budget=${budget} duracao=${duracao} oferta="${String(oferta).replace(/"/g, '\\"')}"`;
   await delegateToClaude(cmd);
+}
+
+async function flowMidias() {
+  const midias = await listAvailableMidias();
+  if (midias.length === 0) {
+    p.note(
+      [
+        `Sua pasta de mídias está vazia: ${chalk.cyan(MIDIAS_DIR)}`,
+        '',
+        'Vou abrir o Finder pra você arrastar suas fotos/vídeos pra dentro.',
+        'Aceita: .jpg .jpeg .png .webp .mp4 .mov .m4v',
+      ].join('\n'),
+      chalk.yellow('vazia')
+    );
+    openMidiasFolder('upload');
+    return;
+  }
+
+  console.log();
+  console.log(chalk.bold('  Suas mídias:'));
+  console.log();
+  for (const m of midias) {
+    const icon = m.kind === 'image' ? '🖼️ ' : '🎬';
+    const flag = m.oversize ? chalk.red(' (acima do limite Meta!)') : '';
+    console.log(`  ${icon}  ${chalk.cyan(m.name)}  ${chalk.dim(`· ${m.folder}/ · ${m.sizeHuman}`)}${flag}`);
+  }
+  console.log();
+
+  const action = await p.select({
+    message: 'O que fazer?',
+    options: [
+      { value: 'open',  label: '📂  Abrir pasta no Finder (pra adicionar/remover)' },
+      { value: 'voltar', label: '← voltar' },
+    ],
+  });
+  if (p.isCancel(action) || action === 'voltar') return;
+  if (action === 'open') openMidiasFolder('upload');
 }
 
 async function flowPausar() {

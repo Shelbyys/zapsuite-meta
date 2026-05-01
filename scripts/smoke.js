@@ -4,6 +4,7 @@
 import { renderAll } from '../src/installer/render-templates.js';
 import { patchConfig, ensureAppDir } from '../src/lib/config.js';
 import { runDoctor } from '../src/commands/doctor.js';
+import { ensureMidiasFolders } from '../src/lib/midias.js';
 
 const fakeCfg = {
   licenseKey: 'DEV-SMOKE-0001',
@@ -25,6 +26,7 @@ const fakeCfg = {
 };
 
 await ensureAppDir();
+await ensureMidiasFolders();
 await patchConfig(fakeCfg);
 await renderAll({
   ...fakeCfg,

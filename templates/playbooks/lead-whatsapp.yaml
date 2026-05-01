@@ -40,21 +40,25 @@ anuncios:
     variante: A
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "delegar para agente criativo com oferta='{{oferta}}'"
+    midia: cliente_fornece              # 1 foto da pasta ~/.easy4u-trafego/midias/
+    angulo_copy: oferta_principal
   - tipo: imagem
     variante: B
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "variação A/B com ângulo de prova social"
+    midia: cliente_fornece              # foto diferente da variante A
+    angulo_copy: prova_social
   - tipo: video_curto
     duracao_seg: 15
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "vídeo Freepik Kling com produto/serviço em ação"
+    midia: cliente_fornece              # vídeo .mp4/.mov até 4GB, idealmente 9:16
+    angulo_copy: produto_em_acao
   - tipo: carrossel
     num_cards: 4
     cta: SEND_MESSAGE
     destino: whatsapp_business
+    midia: cliente_fornece              # 4 fotos, mesma proporção
 
 regras_otimizacao:
   - { se: "cpm > 30", por_dias: 3, acao: pausar_conjunto }

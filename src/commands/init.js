@@ -8,6 +8,7 @@ import { patchConfig, ensureAppDir } from '../lib/config.js';
 import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
 import { DESKTOP_DIR } from '../lib/paths.js';
+import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
 
 const NICHOS = [
   { value: 'pizzaria',     label: 'Pizzaria / Delivery' },
@@ -146,7 +147,10 @@ export async function runInit() {
   };
   await patchConfig(config);
 
-  // ---------- 5. Render templates ----------
+  // ---------- 5. Pasta de mídias ----------
+  await ensureMidiasFolders();
+
+  // ---------- 6. Render templates ----------
   const s3 = p.spinner();
   s3.start('Gerando arquivos do Claude Code (CLAUDE.md, agentes, slash commands, playbooks)');
   const today = new Date().toISOString().slice(0, 10);
@@ -175,10 +179,12 @@ export async function runInit() {
       '',
       chalk.bold('Próximos passos:'),
       '',
-      `  1. Rode ${chalk.cyan('easy4u-trafego')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
-      `  2. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
-      `  3. Na primeira tool da Meta, o Claude Code vai abrir o navegador pra você`,
-      `     ${chalk.dim('autorizar a conta Facebook (uma única vez).')}`,
+      `  1. Coloque suas fotos/vídeos em ${chalk.cyan(MIDIAS_DIR + '/upload/')}`,
+      `     ${chalk.dim('(o menu tem opção pra abrir essa pasta)')}`,
+      `  2. Rode ${chalk.cyan('easy4u-trafego')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
+      `  3. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
+      `  4. Na primeira tool da Meta, o Claude Code abre o navegador pra você`,
+      `     ${chalk.dim('autorizar o Facebook (uma única vez).')}`,
       '',
       chalk.dim(`Atalho: Desktop → "Easy4u Tráfego.command"`),
     ].join('\n')

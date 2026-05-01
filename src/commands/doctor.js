@@ -6,6 +6,7 @@ import { showBanner } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
 import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
 import { APP_DIR } from '../lib/paths.js';
+import { listAvailableMidias, MIDIAS_DIR } from '../lib/midias.js';
 
 export async function runDoctor() {
   showBanner('Diagnóstico');
@@ -34,6 +35,13 @@ export async function runDoctor() {
 
   const playbooks = await dirCount(path.join(APP_DIR, 'playbooks'));
   checks.push([`Playbooks (${playbooks})`,                 playbooks > 0]);
+
+  const midias = await listAvailableMidias();
+  const imgs = midias.filter(m => m.kind === 'image').length;
+  const vids = midias.filter(m => m.kind === 'video').length;
+  checks.push([`Mídias (${imgs === 1 ? '1 imagem' : imgs + ' imagens'} · ${vids === 1 ? '1 vídeo' : vids + ' vídeos'})`, midias.length > 0]);
+  const oversize = midias.filter(m => m.oversize).length;
+  if (oversize) checks.push([chalk.yellow(`⚠ ${oversize} arquivo(s) acima do limite Meta`), false]);
 
   console.log();
   for (const [label, ok] of checks) {

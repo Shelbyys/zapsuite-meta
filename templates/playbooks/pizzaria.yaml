@@ -49,22 +49,26 @@ anuncios:
     variante: A
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "foto real do produto chegando à mesa, sem stock photo"
+    midia: cliente_fornece              # ideal: foto real do produto na mesa
+    angulo_copy: produto_apetitoso
   - tipo: imagem
     variante: B
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "ângulo combo + preço promocional sexta-domingo"
+    midia: cliente_fornece              # ideal: foto de combo
+    angulo_copy: combo_promocao
   - tipo: video_curto
     duracao_seg: 12
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "preparo do produto em close (mão na massa, queijo derretendo)"
+    midia: cliente_fornece              # ideal: vídeo do preparo (mão na massa)
+    angulo_copy: bastidores
   - tipo: carrossel
     num_cards: 4
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    criativo_brief: "4 sabores principais ou 4 combos"
+    midia: cliente_fornece              # 4 fotos: sabores ou combos
+    angulo_copy: variedade_cardapio
 
 regras_otimizacao:
   - { se: "cpm > 25", por_dias: 3, acao: pausar_conjunto }

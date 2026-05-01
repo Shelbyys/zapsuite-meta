@@ -41,17 +41,20 @@ anuncios:
     variante: A
     cta: BOOK_NOW
     destino: lead_form
-    criativo_brief: "antes/depois ou resultado real, sem stock photo"
+    midia: cliente_fornece              # ideal: foto antes/depois real
+    angulo_copy: resultado_real
   - tipo: imagem
     variante: B
     cta: BOOK_NOW
     destino: lead_form
-    criativo_brief: "ângulo de oferta com preço/desconto"
+    midia: cliente_fornece              # ideal: foto do espaço/equipe
+    angulo_copy: oferta_preco
   - tipo: video_curto
     duracao_seg: 20
     cta: BOOK_NOW
     destino: lead_form
-    criativo_brief: "depoimento de cliente real ou rotina do atendimento"
+    midia: cliente_fornece              # ideal: depoimento de cliente real
+    angulo_copy: depoimento
 
 formulario_lead:
   campos: [nome, telefone, melhor_horario_contato]
