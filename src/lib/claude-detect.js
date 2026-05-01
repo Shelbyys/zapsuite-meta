@@ -16,7 +16,7 @@ export function installClaudeCode() {
 export function registerMetaMcp(scope = 'user') {
   // Tenta registrar o MCP da Meta no Claude Code do usuário.
   // Se falhar, não bloqueia — o usuário pode rodar manualmente depois.
-  const url = process.env.EASY4U_META_MCP_URL || 'https://mcp.meta.com/mcp';
+  const url = process.env.EASY4U_META_MCP_URL || 'https://mcp.facebook.com/ads';
   try {
     execSync(`claude mcp add --transport http --scope ${scope} meta ${url}`, {
       stdio: 'ignore',

@@ -37,7 +37,7 @@ export async function runMenu() {
 
   showHeader(
     cfg.business?.nichoCustom || cfg.business?.nicho?.toUpperCase() || 'Easy4u Tráfego',
-    cfg.meta?.adAccountId,
+    cfg.business?.cidade,
     `R$ ${cfg.limits?.dailyBudgetMax}/dia (limite)`
   );
 

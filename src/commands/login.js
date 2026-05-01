@@ -1,9 +1,9 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
+import { spawn } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
-import { startOAuth } from '../lib/meta-oauth.js';
-import { saveSecret } from '../lib/secrets.js';
 import { loadConfig } from '../lib/config.js';
+import { APP_DIR } from '../lib/paths.js';
 
 export async function runLogin() {
   showBanner('Reconectar conta Meta');
@@ -13,20 +13,32 @@ export async function runLogin() {
     return;
   }
 
-  const go = await p.confirm({
-    message: 'Vou abrir o navegador para você autorizar a Meta de novo. Pode ir?',
-    initialValue: true,
-  });
+  p.note(
+    [
+      'Quem gerencia o login na Meta agora é o Claude Code (via MCP Facebook).',
+      '',
+      'Vou abrir o Claude Code e disparar uma chamada de teste.',
+      'Se o token tiver expirado, ele abre o navegador automaticamente',
+      'pra você reautenticar.',
+    ].join('\n'),
+    chalk.cyan('como funciona')
+  );
+
+  const go = await p.confirm({ message: 'Abrir Claude Code agora?', initialValue: true });
   if (p.isCancel(go) || !go) return;
 
-  const s = p.spinner();
-  s.start('Aguardando autorização no navegador');
-  const oauth = await startOAuth({ devMode: cfg.plan === 'dev' });
-  s.stop(chalk.green('Conectado'));
+  await new Promise(resolve => {
+    const child = spawn(
+      'claude',
+      ['-p', 'Use a tool da Meta pra listar minhas contas de anúncios. Não crie nada — só lista.'],
+      { stdio: 'inherit', cwd: APP_DIR }
+    );
+    child.on('exit', () => resolve());
+    child.on('error', err => {
+      console.log(chalk.red(`\nNão consegui abrir o Claude Code: ${err.message}`));
+      resolve();
+    });
+  });
 
-  await saveSecret('meta_access_token', oauth.accessToken, cfg.licenseKey);
-  if (oauth.expiresIn)
-    await saveSecret('meta_token_expires_at', Date.now() + oauth.expiresIn * 1000, cfg.licenseKey);
-
-  p.outro(chalk.green('Token Meta atualizado.'));
+  p.outro(chalk.green('Pronto.'));
 }

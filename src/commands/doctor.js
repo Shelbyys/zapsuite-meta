@@ -1,11 +1,11 @@
 import chalk from 'chalk';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
-import { readSecret } from '../lib/secrets.js';
 import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
-import fs from 'node:fs/promises';
 import { APP_DIR } from '../lib/paths.js';
-import path from 'node:path';
 
 export async function runDoctor() {
   showBanner('Diagnóstico');
@@ -15,9 +15,6 @@ export async function runDoctor() {
   const cfg = await loadConfig();
   checks.push(['Config (~/.easy4u-trafego/config.json)', !!cfg]);
 
-  const tok = cfg ? await readSecret('meta_access_token', cfg.licenseKey) : null;
-  checks.push(['Token Meta criptografado',                !!tok]);
-
   checks.push(['Claude Code instalado',                    isClaudeCodeInstalled()]);
 
   const claudeMd = await fileExists(path.join(APP_DIR, 'CLAUDE.md'));
@@ -25,6 +22,9 @@ export async function runDoctor() {
 
   const mcp = await fileExists(path.join(APP_DIR, '.mcp.json'));
   checks.push(['.mcp.json gerado',                         mcp]);
+
+  const mcpRegistered = isMetaMcpRegistered();
+  checks.push(['MCP Meta registrado no Claude Code',       mcpRegistered]);
 
   const agents = await dirCount(path.join(APP_DIR, '.claude/agents'));
   checks.push([`Agentes (${agents})`,                      agents > 0]);
@@ -43,9 +43,22 @@ export async function runDoctor() {
 
   if (cfg) {
     console.log(chalk.dim('  Negócio:  ') + chalk.bold(cfg.business?.nichoCustom || cfg.business?.nicho || '—'));
-    console.log(chalk.dim('  Conta:    ') + (cfg.meta?.adAccountName || '—'));
     console.log(chalk.dim('  Limite:   ') + `R$ ${cfg.limits?.dailyBudgetMax}/dia`);
     console.log();
+  }
+
+  if (!mcpRegistered) {
+    console.log(chalk.yellow('  Para registrar o MCP da Meta manualmente:'));
+    console.log(chalk.cyan('    claude mcp add --transport http --scope user meta https://mcp.facebook.com/ads\n'));
+  }
+}
+
+function isMetaMcpRegistered() {
+  try {
+    const out = execSync('claude mcp list 2>/dev/null', { encoding: 'utf8' });
+    return /meta\b/i.test(out) && /mcp\.facebook\.com/i.test(out);
+  } catch {
+    return false;
   }
 }
 

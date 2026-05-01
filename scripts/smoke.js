@@ -3,7 +3,6 @@
 // e roda o doctor pra confirmar que todo o pipeline funciona offline.
 import { renderAll } from '../src/installer/render-templates.js';
 import { patchConfig, ensureAppDir } from '../src/lib/config.js';
-import { saveSecret } from '../src/lib/secrets.js';
 import { runDoctor } from '../src/commands/doctor.js';
 
 const fakeCfg = {
@@ -20,11 +19,6 @@ const fakeCfg = {
     horario: 'Seg–Dom · 18h às 23h',
     diferencial: 'única pizzaria do bairro com forno a lenha',
   },
-  meta: {
-    adAccountId: 'act_1234567890',
-    adAccountName: 'Pizzaria do João (DEV)',
-    currency: 'BRL',
-  },
   limits: { dailyBudgetMax: 100 },
   telemetry: true,
   installedAt: new Date().toISOString(),
@@ -32,7 +26,6 @@ const fakeCfg = {
 
 await ensureAppDir();
 await patchConfig(fakeCfg);
-await saveSecret('meta_access_token', 'DEV_TOKEN_smoke', fakeCfg.licenseKey);
 await renderAll({
   ...fakeCfg,
   today: new Date().toISOString().slice(0, 10),

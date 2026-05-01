@@ -2,15 +2,12 @@ import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import { showBanner } from '../lib/banner.js';
 import { validateLicense } from '../lib/licenca.js';
-import { startOAuth, listAdAccounts } from '../lib/meta-oauth.js';
-import { saveSecret } from '../lib/secrets.js';
 import { patchConfig, ensureAppDir } from '../lib/config.js';
 import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
-import { DESKTOP_DIR, APP_DIR } from '../lib/paths.js';
+import { DESKTOP_DIR } from '../lib/paths.js';
 
 const NICHOS = [
   { value: 'pizzaria',     label: 'Pizzaria / Delivery' },
@@ -35,25 +32,23 @@ const OBJETIVOS = [
 
 export async function runInit() {
   console.clear();
-  showBanner('Instalação · vamos preparar tudo em ~5 minutos');
+  showBanner('Instalação · vamos preparar tudo em ~3 minutos');
 
   p.intro(chalk.bgBlue.white(' Easy4u Tráfego AI · setup '));
 
   await ensureAppDir();
 
   // ---------- 1. Claude Code ----------
-  const claudeOk = await p.tasks([
+  await p.tasks([
     {
       title: 'Verificando Claude Code',
       task: async () => {
         if (isClaudeCodeInstalled()) return chalk.green('Claude Code já instalado');
-        return new Promise(resolve => {
-          installClaudeCode();
-          resolve(chalk.green('Claude Code instalado'));
-        });
+        installClaudeCode();
+        return chalk.green('Claude Code instalado');
       },
     },
-  ]).catch(() => null);
+  ]);
 
   // ---------- 2. Licença ----------
   const licenseKey = await p.text({
@@ -76,42 +71,7 @@ export async function runInit() {
     )
   );
 
-  // ---------- 3. OAuth Meta ----------
-  const goAuth = await p.confirm({
-    message: 'Vou abrir o navegador para você conectar sua conta Meta. Pode ir?',
-    initialValue: true,
-  });
-  if (p.isCancel(goAuth) || !goAuth) throw new Error('cancelled');
-
-  const s2 = p.spinner();
-  s2.start('Aguardando autorização da Meta no navegador');
-  const oauth = await startOAuth({ devMode: lic.dev });
-  s2.stop(chalk.green(`Conectado à Meta ${oauth.dev ? chalk.dim('(token simulado · dev)') : ''}`));
-
-  await saveSecret('meta_access_token', oauth.accessToken, licenseKey);
-  if (oauth.expiresIn) await saveSecret('meta_token_expires_at', Date.now() + oauth.expiresIn * 1000, licenseKey);
-
-  // ---------- 4. Conta de anúncios ----------
-  const accounts = await listAdAccounts(oauth.accessToken);
-  if (!accounts.length) {
-    p.note(
-      'Nenhuma conta de anúncios encontrada na sua conta Meta.\nCrie uma em business.facebook.com e rode `easy4u-trafego login` depois.',
-      chalk.yellow('atenção')
-    );
-    return;
-  }
-
-  const accountId = await p.select({
-    message: 'Qual conta de anúncios usar?',
-    options: accounts.map(a => ({
-      value: a.id,
-      label: `${a.name}  ${chalk.dim(`· ${a.currency} ${a.balance}`)}`,
-    })),
-  });
-  if (p.isCancel(accountId)) throw new Error('cancelled');
-  const account = accounts.find(a => a.id === accountId);
-
-  // ---------- 5. Briefing ----------
+  // ---------- 3. Briefing ----------
   p.note('Agora 6 perguntas rápidas sobre seu negócio.\nIsso vira o cérebro da IA pra todas as campanhas.', chalk.cyan('briefing'));
 
   const nicho = await p.select({ message: 'Qual seu nicho?', options: NICHOS });
@@ -165,7 +125,7 @@ export async function runInit() {
   });
   if (p.isCancel(telemetria)) throw new Error('cancelled');
 
-  // ---------- 6. Salvar config ----------
+  // ---------- 4. Salvar config ----------
   const config = {
     licenseKey,
     plan: lic.plan,
@@ -178,11 +138,6 @@ export async function runInit() {
       horario,
       diferencial,
     },
-    meta: {
-      adAccountId: account.id,
-      adAccountName: account.name,
-      currency: account.currency,
-    },
     limits: {
       dailyBudgetMax: Number(budgetTeto),
     },
@@ -191,9 +146,9 @@ export async function runInit() {
   };
   await patchConfig(config);
 
-  // ---------- 7. Render templates ----------
+  // ---------- 5. Render templates ----------
   const s3 = p.spinner();
-  s3.start('Gerando arquivos do Claude Code (CLAUDE.md, agentes, slash commands)');
+  s3.start('Gerando arquivos do Claude Code (CLAUDE.md, agentes, slash commands, playbooks)');
   const today = new Date().toISOString().slice(0, 10);
   await renderAll({
     ...config,
@@ -203,26 +158,29 @@ export async function runInit() {
   });
   s3.stop(chalk.green('Arquivos gerados em ~/.easy4u-trafego/'));
 
-  // ---------- 8. MCP da Meta no Claude Code ----------
+  // ---------- 6. MCP da Meta no Claude Code ----------
   const s4 = p.spinner();
-  s4.start('Registrando MCP da Meta no Claude Code');
+  s4.start('Registrando MCP da Meta no Claude Code (mcp.facebook.com/ads)');
   const mcp = registerMetaMcp('user');
   if (mcp.ok) s4.stop(chalk.green('MCP da Meta registrado'));
-  else s4.stop(chalk.yellow(`MCP não foi registrado automaticamente: ${mcp.error}`));
+  else s4.stop(chalk.yellow(`MCP não registrado automaticamente: ${mcp.error}`));
 
-  // ---------- 9. Atalho no Desktop ----------
+  // ---------- 7. Atalho no Desktop ----------
   await maybeCreateShortcut();
 
-  // ---------- 10. Final ----------
+  // ---------- 8. Final ----------
   p.outro(
     [
       chalk.green.bold('Pronto!'),
       '',
-      'Para usar agora:',
-      `  ${chalk.cyan('easy4u-trafego')}     ${chalk.dim('— menu interativo (mais fácil)')}`,
-      `  ${chalk.cyan('claude')}             ${chalk.dim('— abre Claude Code; lá use /nova-campanha')}`,
+      chalk.bold('Próximos passos:'),
       '',
-      chalk.dim(`Atalho clicável: Desktop → "Easy4u Tráfego.command"`),
+      `  1. Rode ${chalk.cyan('easy4u-trafego')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
+      `  2. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
+      `  3. Na primeira tool da Meta, o Claude Code vai abrir o navegador pra você`,
+      `     ${chalk.dim('autorizar a conta Facebook (uma única vez).')}`,
+      '',
+      chalk.dim(`Atalho: Desktop → "Easy4u Tráfego.command"`),
     ].join('\n')
   );
 }
