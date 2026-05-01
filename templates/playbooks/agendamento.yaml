@@ -1,0 +1,65 @@
+id: agendamento
+nome: "Agendamento Online"
+descricao: "Lead qualificado para agendamento — salão, dentista, clínica, estética."
+indicado_para:
+  - salão de beleza, barbearia
+  - dentista, médico, fisioterapeuta
+  - clínica de estética, spa
+benchmarks:
+  cpm_alerta: 35
+  ctr_minimo: 0.9
+  cpa_alvo: 12.00
+
+campanha:
+  nome: "{{nichoLabel}} · Agendamento · {{today}}"
+  objetivo: LEADS
+  orcamento_tipo: CBO
+  orcamento_diario: "{{budget}}"
+
+conjuntos:
+  - nome: "Frio · Bairro + 3km"
+    publico:
+      localizacao:
+        cidade: "{{business.cidade}}"
+        raio_km: 3
+      idade_min: 22
+      idade_max: 50
+      generos: [feminino]   # ajustar pelo nicho — salão/estética default feminino
+      interesses_dinamicos: true
+    posicionamentos: [feed_ig, stories_ig, reels_ig]
+    otimizacao: LEAD
+    formulario_instantaneo: true
+
+  - nome: "Morno · Visitou perfil 30d"
+    publico:
+      custom_audience: visitou_instagram_30d
+    posicionamentos: [feed_ig, stories_ig, reels_ig]
+    otimizacao: LEAD
+
+anuncios:
+  - tipo: imagem
+    variante: A
+    cta: BOOK_NOW
+    destino: lead_form
+    criativo_brief: "antes/depois ou resultado real, sem stock photo"
+  - tipo: imagem
+    variante: B
+    cta: BOOK_NOW
+    destino: lead_form
+    criativo_brief: "ângulo de oferta com preço/desconto"
+  - tipo: video_curto
+    duracao_seg: 20
+    cta: BOOK_NOW
+    destino: lead_form
+    criativo_brief: "depoimento de cliente real ou rotina do atendimento"
+
+formulario_lead:
+  campos: [nome, telefone, melhor_horario_contato]
+  pergunta_qualificacao: "Qual serviço você quer agendar?"
+  thank_you: "Em até 1h alguém da equipe entra em contato. Salve nosso número."
+
+regras_otimizacao:
+  - { se: "cpm > 35", por_dias: 3, acao: pausar_conjunto }
+  - { se: "ctr < 0.9", por_dias: 2, acao: trocar_criativo }
+  - { se: "cpa < cpa_alvo", acao: duplicar_com_30pct_budget }
+  - { se: "leads_qualificados < 50pct dos leads", acao: revisar_publico_e_oferta }
