@@ -1,0 +1,46 @@
+id: ton
+nome: "Ton"
+tipo: produto_afiliado
+fonte_orientacao: "Estrutura validada · documento Easy4u 2026-05"
+
+# Ton tem DUAS estruturas recomendadas — escolher uma
+estruturas_alternativas:
+  - estrutura: "1-4-1"
+    num_conjuntos: 4
+    por_conjunto: 15.00
+  - estrutura: "1-5-1"
+    num_conjuntos: 5
+    por_conjunto_min: 12.00
+    por_conjunto_max: 15.00
+
+estrutura_default: "1-5-1"   # default; cliente escolhe a outra se quiser
+objetivo: POST_ENGAGEMENT
+orcamento_tipo: ABO
+
+orcamento:
+  diario_total_min: 60.00
+  diario_total_max: 70.00
+  num_anuncios_por_conjunto: 1
+
+publico:
+  generos: [masculino, feminino]
+  idade_min: 30
+  idade_max: 55
+  estilo: aberto
+
+posicionamentos:
+  - story
+  - feed
+
+criativo:
+  tipos_aceitos: [imagem, video_curto]
+  midia: cliente_fornece
+
+observacoes:
+  - "ATENÇÃO: a Ton tem regras específicas de pausa — não aplicar as regras padrão de outros produtos."
+  - "Não aplicar nela as mesmas referências de orçamento dos demais produtos (esta tem teto MAIOR)."
+  - "Ao otimizar, validar com o cliente antes de pausar — comportamento da Ton é diferente."
+
+regras_otimizacao_especiais:
+  - "Não usar regras padrão de pausa por CPM/CTR — comportamento Ton é específico."
+  - "Antes de qualquer pausa, perguntar explicitamente ao cliente."

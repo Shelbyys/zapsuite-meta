@@ -1,0 +1,34 @@
+id: calminol
+nome: "Calminol"
+tipo: produto_afiliado
+fonte_orientacao: "Estrutura validada · documento Easy4u 2026-05"
+
+estrutura: "1-5-1"
+objetivo: POST_ENGAGEMENT
+orcamento_tipo: ABO
+
+orcamento:
+  diario_total_min: 30.00
+  diario_total_max: 35.00
+  por_conjunto_min: 6.50
+  por_conjunto_max: 7.00
+  num_conjuntos: 5
+  num_anuncios_por_conjunto: 1
+
+publico:
+  generos: [masculino, feminino]
+  idade_min: 35
+  idade_max: 65
+  idade_max_aberta: true     # 65+
+  estilo: aberto
+
+posicionamentos:
+  - story
+  - feed
+
+criativo:
+  tipos_aceitos: [imagem, video_curto]
+  midia: cliente_fornece
+
+observacoes:
+  - "Seguir público aberto, controlando idade e gênero"

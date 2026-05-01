@@ -64,18 +64,38 @@ Limites Meta a respeitar:
 - CTA: "chama no zap", "agenda agora", "pega o seu" — coloquial, regional cearense quando o nicho permitir.
 - Nada de "transforme sua vida", "única oportunidade", "garantido".
 
-## Públicos padrão por objetivo
+## Estrutura padrão das campanhas (1-X-1 em ABO)
 
-- **Frio – local:** localização +5 km da cidade, idade 25–55, interesses do nicho.
-- **Morno – engajamento:** custom audience "engajou_pagina_90d" + "engajou_instagram_90d".
-- **Quente – clientes:** lista subida (CSV/CRM) ou pixel de site últimos 30 dias.
+Todos os 16 produtos pré-cadastrados seguem o mesmo método:
+
+- **1 campanha** · objetivo **ENGAJAMENTO** (POST_ENGAGEMENT)
+- **X conjuntos idênticos** (mesmo público, mesma criativo, mesmo orçamento) — onde X varia por produto (4, 5 ou 6)
+- **1 anúncio por conjunto** (sempre o mesmo criativo replicado)
+- **Orçamento ABO** (Ad Set Budget Optimization — orçamento por conjunto, não por campanha)
+- **Posicionamentos:** Story + Feed (Facebook + Instagram)
+- **Público "aberto"** — só controla gênero e idade, **sem adicionar interesses**
+
+A duplicação dos conjuntos é proposital: deixa a Meta otimizar entrega entre os
+conjuntos idênticos pra encontrar o "vencedor". Não tente "melhorar" a estrutura
+sem que o cliente peça explicitamente.
+
+## Públicos por playbook
+
+Cada produto tem público fixo no YAML. Exemplos:
+- **Hay Hair:** F · 24–55 · 1-5-1 · R$ 6,50–7,00/conjunto
+- **Movi Mint:** H+M · 45–65+ · 1-6-1 · R$ 6,00/conjunto · prefere vídeo
+- **Ton:** H+M · 30–55 · 1-4-1 ou 1-5-1 · R$ 12–15/conjunto · regras especiais
+
+Os playbooks ficam em `~/.zapsuite-meta/playbooks/{produto}.yaml`. Sempre leia
+o YAML antes de propor estrutura — não invente número.
 
 ## Regras de otimização (aplicar em /otimizar)
 
 - Se **CPM > R$ 30** por 3 dias seguidos → pausar conjunto.
-- Se **CTR < 1%** por 2 dias seguidos → trocar criativo (sugerir variação com outra mídia da pasta).
-- Se **CPA < meta** definida pelo usuário → duplicar conjunto vencedor com **+30% budget** (respeitando limite hard).
+- Se **CTR < 1%** por 2 dias seguidos → trocar criativo (sugerir nova mídia da pasta).
+- Se **CPE/CPA bom** → duplicar conjunto vencedor (respeitando limite hard).
 - Se **frequência > 3** em 7 dias → renovar criativo (pedir nova mídia ao cliente).
+- **EXCEÇÃO Ton:** ler `regras_otimizacao_especiais` no playbook — Ton tem comportamento específico de pausa, não usar regras padrão.
 
 ## Subagentes disponíveis
 

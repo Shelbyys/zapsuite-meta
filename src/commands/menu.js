@@ -1,28 +1,35 @@
 import * as p from '@clack/prompts';
 import chalk from 'chalk';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import YAML from 'yaml';
 import { spawn } from 'node:child_process';
 import { showBanner, showHeader } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
 import { runInit } from './init.js';
 import { listAvailableMidias, openMidiasFolder, MIDIAS_DIR, UPLOAD_DIR } from '../lib/midias.js';
+import { APP_DIR } from '../lib/paths.js';
+import { checkForUpdateCached } from '../lib/updater.js';
 
+// Playbooks pré-programados — estrutura validada (documento Easy4u 2026-05).
+// Formato: 1-X-1 em ABO (1 campanha · X conjuntos · 1 anúncio cada).
 const PLAYBOOKS = [
-  { value: 'lead-whatsapp', label: '📱  Lead WhatsApp', hint: 'mais usado' },
-  { value: 'agendamento',   label: '📅  Agendamento',  hint: 'salão · dentista · clínica' },
-  { value: 'pizzaria',      label: '🍕  Pizzaria / Delivery' },
-  { value: 'loja',          label: '🏪  Loja física' },
-  { value: 'ecommerce',     label: '🛒  E-commerce' },
-  { value: 'imobiliaria',   label: '🏠  Imobiliária' },
-  { value: 'academia',      label: '💪  Academia' },
-  { value: 'promo',         label: '⚡  Promoção relâmpago' },
-];
-
-const BUDGETS = [
-  { value: 20,  label: 'R$ 20/dia',  hint: 'recomendado pra começar' },
-  { value: 50,  label: 'R$ 50/dia' },
-  { value: 100, label: 'R$ 100/dia' },
-  { value: 200, label: 'R$ 200/dia' },
-  { value: -1,  label: 'Outro valor (digitar)' },
+  { value: 'hay-hair',          label: 'Hay Hair',                        hint: '1-5-1 · R$30-35/dia · F 24-55' },
+  { value: 'movi-mint',         label: 'Movi Mint',                       hint: '1-6-1 · R$34+/dia · H+M 45-65+' },
+  { value: 'velmo-black-drink', label: 'Velmo Black Drink (Morango/Tang)', hint: '1-6-1 · R$30-35/dia · F 25-54' },
+  { value: 'velmo-black',       label: 'Velmo Black',                     hint: '1-5-1 · R$30-35/dia · F 25-45' },
+  { value: 'ton',               label: 'Ton',                             hint: '1-4-1 ou 1-5-1 · R$60-70/dia · regras especiais' },
+  { value: 'creatina-gummy',    label: 'Creatina Gummy',                  hint: '1-5-1 · R$30-35/dia · H+M 18-45' },
+  { value: 'creagym',           label: 'Creagym',                         hint: '1-5-1 · R$30-35/dia · H+M 18-45' },
+  { value: 'celuglow',          label: 'Celuglow',                        hint: '1-5-1 · R$30-35/dia · F 25-55' },
+  { value: 'calminol',          label: 'Calminol',                        hint: '1-5-1 · R$30-35/dia · H+M 35-65+' },
+  { value: 'fiber-slim',        label: 'Fiber Slim',                      hint: '1-5-1 · R$30-35/dia · H+M 25-55' },
+  { value: 'clarize',           label: 'Clarize',                         hint: '1-5-1 · R$30-35/dia · F 20-50' },
+  { value: 'termo-drink',       label: 'Termo Drink',                     hint: '1-5-1 · R$30-35/dia · H+M 20-50' },
+  { value: 'skin-fit',          label: 'Skin Fit',                        hint: '1-5-1 · R$30-35/dia · H+M 25-55' },
+  { value: 'inti-feme',         label: 'Inti Feme',                       hint: '1-5-1 · R$30-35/dia · F 25-55' },
+  { value: 'inti-masc',         label: 'Inti Masc',                       hint: '1-5-1 · R$30-35/dia · H 25-50' },
+  { value: 'quero-mais',        label: 'Quero +',                         hint: '1-5-1 · R$30-35/dia · H+M 25-45' },
 ];
 
 export async function runMenu() {
@@ -41,6 +48,15 @@ export async function runMenu() {
     cfg.business?.cidade,
     `R$ ${cfg.limits?.dailyBudgetMax}/dia (limite)`
   );
+
+  // Check de update em background (não bloqueia o menu)
+  checkForUpdateCached().then(upd => {
+    if (upd?.hasUpdate) {
+      console.log(
+        chalk.yellow(`  📦 Tem versão nova: v${upd.latest} (você tá na v${upd.current}). Rode "${chalk.cyan('zsm update')}".\n`)
+      );
+    }
+  }).catch(() => {});
 
   while (true) {
     const midias = await listAvailableMidias();
@@ -82,42 +98,65 @@ export async function runMenu() {
 }
 
 async function flowNovaCampanha(cfg) {
-  const playbook = await p.select({
-    message: 'Qual modelo usar?',
+  const playbookId = await p.select({
+    message: 'Qual produto vai promover?',
     options: PLAYBOOKS,
   });
-  if (p.isCancel(playbook)) return;
+  if (p.isCancel(playbookId)) return;
 
-  let budget = await p.select({
-    message: 'Quanto investir por dia?',
-    options: BUDGETS,
-  });
-  if (p.isCancel(budget)) return;
-  if (budget === -1) {
-    const v = await p.text({
-      message: 'Digite o valor diário (R$):',
-      placeholder: '75',
-      validate: x => (Number.isNaN(Number(x)) ? 'só números' : undefined),
-    });
-    if (p.isCancel(v)) return;
-    budget = Number(v);
+  // carrega o YAML do playbook
+  const yamlPath = path.join(APP_DIR, 'playbooks', `${playbookId}.yaml`);
+  let pb;
+  try {
+    pb = YAML.parse(await fs.readFile(yamlPath, 'utf8'));
+  } catch (err) {
+    p.note(`Não achei o playbook ${playbookId}: ${err.message}`, chalk.red('erro'));
+    return;
   }
 
-  if (budget > cfg.limits?.dailyBudgetMax) {
+  // resumo da estrutura pré-programada
+  const o = pb.orcamento;
+  const generoTxt = pb.publico.generos.length === 2
+    ? 'Homens e mulheres'
+    : pb.publico.generos[0] === 'feminino' ? 'Mulheres' : 'Homens';
+  const idadeTxt = pb.publico.idade_max_aberta
+    ? `${pb.publico.idade_min}–${pb.publico.idade_max}+`
+    : `${pb.publico.idade_min}–${pb.publico.idade_max}`;
+  const orcamentoTxt = o.diario_total_max
+    ? `R$ ${o.diario_total_min.toFixed(2)} – R$ ${o.diario_total_max.toFixed(2)}/dia`
+    : `R$ ${o.diario_total_min.toFixed(2)}+/dia`;
+  const porConj = o.por_conjunto_max && o.por_conjunto_max !== o.por_conjunto_min
+    ? `R$ ${o.por_conjunto_min.toFixed(2)} – R$ ${o.por_conjunto_max.toFixed(2)}`
+    : `R$ ${(o.por_conjunto_min ?? 0).toFixed(2)}`;
+
+  p.note(
+    [
+      chalk.bold(pb.nome),
+      '',
+      `Estrutura: ${chalk.cyan(pb.estrutura)} em ${pb.orcamento_tipo}`,
+      `Objetivo:  ${pb.objetivo}`,
+      `Posições:  ${pb.posicionamentos.join(' + ')}`,
+      `Público:   ${generoTxt} · ${idadeTxt} anos (aberto)`,
+      `Orçamento: ${orcamentoTxt}  ${chalk.dim(`(${porConj}/conjunto × ${o.num_conjuntos || '?'} conjuntos)`)}`,
+      '',
+      ...pb.observacoes.map(o => chalk.dim(`• ${o}`)),
+    ].join('\n'),
+    chalk.cyan('estrutura pré-programada')
+  );
+
+  // valida limite hard
+  if (o.diario_total_min > cfg.limits?.dailyBudgetMax) {
     const allow = await p.confirm({
-      message: chalk.yellow(`⚠️  Você definiu limite de R$ ${cfg.limits.dailyBudgetMax}/dia. Continuar mesmo assim?`),
+      message: chalk.yellow(`⚠️  Este playbook recomenda mínimo R$ ${o.diario_total_min}/dia, mas seu limite é R$ ${cfg.limits.dailyBudgetMax}/dia. Continuar?`),
       initialValue: false,
     });
     if (p.isCancel(allow) || !allow) return;
   }
 
-  const oferta = await p.text({
-    message: 'Sua oferta em 1 frase (vai virar a copy do anúncio):',
-    placeholder: 'Pizza grande + refri R$ 49,90 só hoje',
-  });
-  if (p.isCancel(oferta)) return;
+  const ok = await p.confirm({ message: 'Usar essa estrutura?', initialValue: true });
+  if (p.isCancel(ok) || !ok) return;
 
-  // checa que tem mídia antes de delegar
+  // checa mídia
   const midias = await listAvailableMidias();
   if (midias.length === 0) {
     p.note(
@@ -125,13 +164,13 @@ async function flowNovaCampanha(cfg) {
         `Você ainda não colocou nenhuma foto/vídeo na pasta:`,
         `  ${chalk.cyan(UPLOAD_DIR)}`,
         '',
-        'Vou abrir o Finder. Arraste suas mídias pra lá e volta.',
+        'Vou abrir o Finder. Arraste suas mídias e volta.',
       ].join('\n'),
       chalk.yellow('preciso das suas mídias')
     );
     openMidiasFolder('upload');
-    const ok = await p.confirm({ message: 'Já colocou as mídias? Continuar?', initialValue: true });
-    if (p.isCancel(ok) || !ok) return;
+    const ok2 = await p.confirm({ message: 'Já colocou as mídias? Continuar?', initialValue: true });
+    if (p.isCancel(ok2) || !ok2) return;
     const after = await listAvailableMidias();
     if (after.length === 0) {
       p.note('Ainda vazia. Volta quando tiver pelo menos 1 foto.', chalk.red('parando aqui'));
@@ -139,20 +178,8 @@ async function flowNovaCampanha(cfg) {
     }
   }
 
-  const duracao = await p.select({
-    message: 'Por quanto tempo a campanha roda?',
-    options: [
-      { value: 7,  label: '7 dias' },
-      { value: 14, label: '14 dias' },
-      { value: 30, label: '30 dias' },
-      { value: 0,  label: 'Sem prazo (até eu pausar)' },
-    ],
-  });
-  if (p.isCancel(duracao)) return;
-
-  // Delega para o Claude Code com argumentos prontos.
-  const cmd = `/nova-campanha playbook=${playbook} budget=${budget} duracao=${duracao} oferta="${String(oferta).replace(/"/g, '\\"')}"`;
-  await delegateToClaude(cmd);
+  // delega — Claude Code monta a árvore Meta seguindo o YAML
+  await delegateToClaude(`/nova-campanha playbook=${playbookId}`);
 }
 
 async function flowMidias() {
@@ -200,9 +227,9 @@ async function flowConfig(cfg) {
   const opt = await p.select({
     message: 'Configurações',
     options: [
+      { value: 'update',   label: '⬆️   Atualizar ZapSuite Meta (npm + templates)' },
       { value: 'login',    label: '🔄  Reconectar conta Meta' },
       { value: 'doctor',   label: '🩺  Diagnóstico do sistema' },
-      { value: 'update',   label: '⬆️   Atualizar templates' },
       { value: 'voltar',   label: '← voltar' },
     ],
   });

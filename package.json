@@ -16,7 +16,11 @@
   "scripts": {
     "start": "node bin/cli.js",
     "dev": "node bin/cli.js init",
-    "menu": "node bin/cli.js"
+    "menu": "node bin/cli.js",
+    "smoke": "node scripts/smoke.js",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "engines": {
     "node": ">=20"
