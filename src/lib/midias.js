@@ -29,7 +29,7 @@ export async function ensureMidiasFolders() {
     await fs.writeFile(
       readme,
       [
-        'Easy4u Tráfego AI · pasta de mídias',
+        'ZapSuite Meta · pasta de mídias',
         '====================================',
         '',
         'Arraste suas fotos e vídeos pra esta pasta.',

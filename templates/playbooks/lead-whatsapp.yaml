@@ -40,7 +40,7 @@ anuncios:
     variante: A
     cta: SEND_MESSAGE
     destino: whatsapp_business
-    midia: cliente_fornece              # 1 foto da pasta ~/.easy4u-trafego/midias/
+    midia: cliente_fornece              # 1 foto da pasta ~/.zapsuite-meta/midias/
     angulo_copy: oferta_principal
   - tipo: imagem
     variante: B

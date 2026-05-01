@@ -14,7 +14,7 @@ export async function runDoctor() {
   const checks = [];
 
   const cfg = await loadConfig();
-  checks.push(['Config (~/.easy4u-trafego/config.json)', !!cfg]);
+  checks.push(['Config (~/.zapsuite-meta/config.json)', !!cfg]);
 
   checks.push(['Claude Code instalado',                    isClaudeCodeInstalled()]);
 

@@ -2,7 +2,7 @@
 description: Mostra todos os comandos disponíveis e exemplos de uso em português.
 ---
 
-# Ajuda — Easy4u Tráfego AI
+# Ajuda — ZapSuite Meta
 
 ## Comandos disponíveis
 
@@ -30,10 +30,10 @@ A IA escolhe o playbook, regra ou agente certo automaticamente.
 
 Suas fotos e vídeos ficam em:
 ```
-~/.easy4u-trafego/midias/
+~/.zapsuite-meta/midias/
 ```
 
-Pra adicionar mais: sai do Claude, roda `easy4u-trafego` no terminal,
+Pra adicionar mais: sai do Claude, roda `zapsuite-meta` no terminal,
 escolhe **📁 Minhas mídias** → o Finder abre, você arrasta, pronto.
 
 A IA **nunca gera imagem com IA** — sempre usa o que você forneceu.

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const HOME = os.homedir();
-export const APP_DIR = path.join(HOME, '.easy4u-trafego');
+export const APP_DIR = path.join(HOME, '.zapsuite-meta');
 export const SECRETS_FILE = path.join(APP_DIR, '.secrets');
 export const CONFIG_FILE = path.join(APP_DIR, 'config.json');
 export const LICENSE_CACHE = path.join(APP_DIR, '.license-cache.json');

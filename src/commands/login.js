@@ -9,7 +9,7 @@ export async function runLogin() {
   showBanner('Reconectar conta Meta');
   const cfg = await loadConfig();
   if (!cfg) {
-    p.note('Você ainda não rodou o init. Use: easy4u-trafego init', chalk.yellow('atenção'));
+    p.note('Você ainda não rodou o init. Use: zapsuite-meta init', chalk.yellow('atenção'));
     return;
   }
 

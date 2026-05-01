@@ -12,19 +12,19 @@ Você vai conduzir o usuário pela criação de uma campanha completa usando
 
 ### 1. Identifique o playbook
 Se vier nos argumentos, use direto. Se não, pergunte ao usuário entre os
-playbooks disponíveis em `~/.easy4u-trafego/playbooks/`.
+playbooks disponíveis em `~/.zapsuite-meta/playbooks/`.
 
 ### 2. Liste as mídias disponíveis
 ```bash
-ls -la ~/.easy4u-trafego/midias/upload/
-ls -la ~/.easy4u-trafego/midias/produto/
-ls -la ~/.easy4u-trafego/midias/ambiente/
-ls -la ~/.easy4u-trafego/midias/equipe/
+ls -la ~/.zapsuite-meta/midias/upload/
+ls -la ~/.zapsuite-meta/midias/produto/
+ls -la ~/.zapsuite-meta/midias/ambiente/
+ls -la ~/.zapsuite-meta/midias/equipe/
 ```
 
 Se **vazia**, pare e diga ao usuário:
 > "Você ainda não colocou nenhuma foto/vídeo. Sai do Claude, roda
-> `easy4u-trafego` no terminal, escolhe '📁 Minhas mídias' e arrasta
+> `zapsuite-meta` no terminal, escolhe '📁 Minhas mídias' e arrasta
 > suas fotos. Depois volta aqui."
 
 ### 3. Briefing
@@ -32,7 +32,7 @@ Chame o agente `briefador` para garantir que oferta, público e orçamento
 fazem sentido. Pule se TODOS os argumentos vieram preenchidos.
 
 ### 4. Carregue o YAML do playbook
-De `~/.easy4u-trafego/playbooks/{playbook}.yaml` e renderize as variáveis
+De `~/.zapsuite-meta/playbooks/{playbook}.yaml` e renderize as variáveis
 com os dados do `CLAUDE.md` + briefing.
 
 ### 5. Gere copy + escolha mídia
@@ -77,7 +77,7 @@ CAMPANHA: {nome} · objetivo {X} · CBO R$ {budget}/dia · {duracao} dias
 4. **Crie cada anúncio** (`ads_create_ad`) referenciando os hashes/IDs.
 
 ### 9. Salve manifest
-Em `~/.easy4u-trafego/campanhas/{data}_{nicho}_{playbook}/manifest.json`:
+Em `~/.zapsuite-meta/campanhas/{data}_{nicho}_{playbook}/manifest.json`:
 ```json
 {
   "campaign_id": "120210...",

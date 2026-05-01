@@ -35,7 +35,7 @@ export async function runInit() {
   console.clear();
   showBanner('Instalação · vamos preparar tudo em ~3 minutos');
 
-  p.intro(chalk.bgBlue.white(' Easy4u Tráfego AI · setup '));
+  p.intro(chalk.bgBlue.white(' ZapSuite Meta · setup '));
 
   await ensureAppDir();
 
@@ -160,7 +160,7 @@ export async function runInit() {
     nichoLabel: NICHOS.find(n => n.value === nicho)?.label || nichoCustom || nicho,
     objetivoLabel: OBJETIVOS.find(o => o.value === objetivo)?.label || objetivo,
   });
-  s3.stop(chalk.green('Arquivos gerados em ~/.easy4u-trafego/'));
+  s3.stop(chalk.green('Arquivos gerados em ~/.zapsuite-meta/'));
 
   // ---------- 6. MCP da Meta no Claude Code ----------
   const s4 = p.spinner();
@@ -181,12 +181,12 @@ export async function runInit() {
       '',
       `  1. Coloque suas fotos/vídeos em ${chalk.cyan(MIDIAS_DIR + '/upload/')}`,
       `     ${chalk.dim('(o menu tem opção pra abrir essa pasta)')}`,
-      `  2. Rode ${chalk.cyan('easy4u-trafego')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
+      `  2. Rode ${chalk.cyan('zapsuite-meta')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
       `  3. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
       `  4. Na primeira tool da Meta, o Claude Code abre o navegador pra você`,
       `     ${chalk.dim('autorizar o Facebook (uma única vez).')}`,
       '',
-      chalk.dim(`Atalho: Desktop → "Easy4u Tráfego.command"`),
+      chalk.dim(`Atalho: Desktop → "ZapSuite Meta.command"`),
     ].join('\n')
   );
 }
@@ -194,8 +194,8 @@ export async function runInit() {
 async function maybeCreateShortcut() {
   if (process.platform !== 'darwin') return;
   try {
-    const shortcut = path.join(DESKTOP_DIR, 'Easy4u Tráfego.command');
-    const body = `#!/bin/zsh\ncd "$HOME"\nexec easy4u-trafego\n`;
+    const shortcut = path.join(DESKTOP_DIR, 'ZapSuite Meta.command');
+    const body = `#!/bin/zsh\ncd "$HOME"\nexec zapsuite-meta\n`;
     await fs.writeFile(shortcut, body, { mode: 0o755 });
   } catch {
     // Desktop pode não existir; ignorar.

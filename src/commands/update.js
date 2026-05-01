@@ -8,7 +8,7 @@ export async function runUpdate() {
   showBanner('Atualizar templates');
   const cfg = await loadConfig();
   if (!cfg) {
-    p.note('Rode `easy4u-trafego init` antes.', chalk.yellow('atenção'));
+    p.note('Rode `zapsuite-meta init` antes.', chalk.yellow('atenção'));
     return;
   }
   const s = p.spinner();

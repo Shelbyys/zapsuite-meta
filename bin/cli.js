@@ -21,18 +21,18 @@ async function main() {
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
     showBanner();
     console.log(chalk.bold('\n  Comandos:\n'));
-    console.log(`    ${chalk.cyan('easy4u-trafego')}            menu interativo (default)`);
-    console.log(`    ${chalk.cyan('easy4u-trafego init')}       instalação inicial`);
-    console.log(`    ${chalk.cyan('easy4u-trafego login')}      reconecta a conta Meta`);
-    console.log(`    ${chalk.cyan('easy4u-trafego doctor')}     diagnóstico do sistema`);
-    console.log(`    ${chalk.cyan('easy4u-trafego update')}     atualiza templates\n`);
+    console.log(`    ${chalk.cyan('zapsuite-meta')}            menu interativo (default)`);
+    console.log(`    ${chalk.cyan('zapsuite-meta init')}       instalação inicial`);
+    console.log(`    ${chalk.cyan('zapsuite-meta login')}      reconecta a conta Meta`);
+    console.log(`    ${chalk.cyan('zapsuite-meta doctor')}     diagnóstico do sistema`);
+    console.log(`    ${chalk.cyan('zapsuite-meta update')}     atualiza templates\n`);
     return;
   }
 
   const fn = commands[cmd];
   if (!fn) {
     console.error(chalk.red(`Comando desconhecido: ${cmd}`));
-    console.error(`Use ${chalk.cyan('easy4u-trafego --help')} para ver os comandos disponíveis.`);
+    console.error(`Use ${chalk.cyan('zapsuite-meta --help')} para ver os comandos disponíveis.`);
     process.exit(1);
   }
 

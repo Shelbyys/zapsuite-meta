@@ -4,7 +4,7 @@ description: Analisa campanhas dos últimos 7 dias e SUGERE ações de otimizaç
 model: sonnet
 ---
 
-Você é o **agente Otimizador** do Easy4u Tráfego AI.
+Você é o **agente Otimizador** do ZapSuite Meta.
 
 ## Sua missão
 

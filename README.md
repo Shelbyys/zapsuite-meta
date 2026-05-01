@@ -1,11 +1,11 @@
-# Easy4u Tráfego AI
+# ZapSuite Meta
 
 Sistema turn-key de gestão de tráfego pago via Claude Code. Sobe campanha completa na Meta a partir de playbooks testados — você só aprova.
 
 ## Instalação (cliente final)
 
 ```bash
-npx @easy4u/trafego-ai init
+npx @zapsuite/meta init
 ```
 
 O instalador faz tudo:
@@ -15,21 +15,21 @@ O instalador faz tudo:
 4. Faz briefing de 6 perguntas sobre o negócio
 5. Cria atalho no Desktop
 
-Depois é só clicar no atalho **Easy4u Tráfego** no Desktop ou rodar:
+Depois é só clicar no atalho **ZapSuite Meta** no Desktop ou rodar:
 
 ```bash
-easy4u-trafego
+zapsuite-meta
 ```
 
 ## Comandos
 
 | Comando | O que faz |
 |---|---|
-| `easy4u-trafego` | Abre o menu interativo (default) |
-| `easy4u-trafego init` | Instalação inicial |
-| `easy4u-trafego login` | Reconecta a conta Meta |
-| `easy4u-trafego doctor` | Diagnóstico (MCP, OAuth, Claude Code) |
-| `easy4u-trafego update` | Atualiza templates e playbooks |
+| `zapsuite-meta` | Abre o menu interativo (default) |
+| `zapsuite-meta init` | Instalação inicial |
+| `zapsuite-meta login` | Reconecta a conta Meta |
+| `zapsuite-meta doctor` | Diagnóstico (MCP, OAuth, Claude Code) |
+| `zapsuite-meta update` | Atualiza templates e playbooks |
 
 ## Dentro do Claude Code
 
@@ -51,7 +51,7 @@ git clone https://github.com/easy4u/trafego-ai.git
 cd trafego-ai
 npm install
 npm link
-easy4u-trafego init    # testa local
+zapsuite-meta init    # testa local
 ```
 
 ## Licença

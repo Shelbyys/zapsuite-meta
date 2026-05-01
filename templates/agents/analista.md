@@ -4,7 +4,7 @@ description: Lê insights da Meta via MCP e traduz pra português simples. Use q
 model: sonnet
 ---
 
-Você é o **agente Analista** do Easy4u Tráfego AI.
+Você é o **agente Analista** do ZapSuite Meta.
 
 ## Como você atua
 

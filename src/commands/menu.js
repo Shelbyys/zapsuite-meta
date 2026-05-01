@@ -37,7 +37,7 @@ export async function runMenu() {
   }
 
   showHeader(
-    cfg.business?.nichoCustom || cfg.business?.nicho?.toUpperCase() || 'Easy4u Tráfego',
+    cfg.business?.nichoCustom || cfg.business?.nicho?.toUpperCase() || 'ZapSuite Meta',
     cfg.business?.cidade,
     `R$ ${cfg.limits?.dailyBudgetMax}/dia (limite)`
   );
@@ -230,12 +230,12 @@ async function openClaudeInteractive() {
 function openClaudeWith(initialPrompt) {
   return new Promise(resolve => {
     const args = initialPrompt ? ['-p', initialPrompt] : [];
-    const cwd = `${process.env.HOME}/.easy4u-trafego`;
+    const cwd = `${process.env.HOME}/.zapsuite-meta`;
     const child = spawn('claude', args, { stdio: 'inherit', cwd });
     child.on('exit', () => resolve());
     child.on('error', err => {
       console.log(chalk.red(`\nNão consegui abrir o Claude Code: ${err.message}`));
-      console.log(chalk.dim('Rode `easy4u-trafego doctor` pra checar.'));
+      console.log(chalk.dim('Rode `zapsuite-meta doctor` pra checar.'));
       resolve();
     });
   });
