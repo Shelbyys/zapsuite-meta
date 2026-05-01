@@ -6,10 +6,18 @@ import { getCurrentVersion } from './updater.js';
 
 const SUPABASE_URL = process.env.EASY4U_SUPABASE_URL || 'https://deolgsizilmcsjufodxn.supabase.co';
 const VALIDATE_FN = `${SUPABASE_URL}/functions/v1/validar-licenca`;
-const CACHE_TTL_DAYS = 7;
 const TIMEOUT_MS = 5000;
 
-export async function validateLicense(licenseKey, { offline = false, operador = null } = {}) {
+/**
+ * Valida licença.
+ *
+ *  - DEV-XXX: liberado sempre, não toca a rede.
+ *  - { force: true }: força revalidação online (ignora cache permanente).
+ *  - Padrão: depois da PRIMEIRA validação bem-sucedida, retorna do cache
+ *    pra sempre — não revalida em runs futuros (regra "valida só na 1ª vez").
+ *  - { offline: true }: só usa cache (não tenta rede).
+ */
+export async function validateLicense(licenseKey, { offline = false, operador = null, force = false } = {}) {
   if (!licenseKey || licenseKey.length < 6) {
     return { valid: false, reason: 'formato inválido' };
   }
@@ -18,12 +26,16 @@ export async function validateLicense(licenseKey, { offline = false, operador = 
     return { valid: true, plan: 'dev', maxAccounts: 99, produtosLiberados: null, dev: true };
   }
 
-  if (offline) {
+  // Cache permanente: se já validou com sucesso, retorna direto sem rebater no servidor.
+  if (!force) {
     const cached = await readCache();
-    if (cached?.licenseKey === licenseKey && fresh(cached.cachedAt)) {
+    if (cached?.licenseKey === licenseKey && cached?.result?.valid === true) {
       return { ...cached.result, fromCache: true };
     }
-    return { valid: false, reason: 'sem cache válido — precisa de internet' };
+  }
+
+  if (offline) {
+    return { valid: false, reason: 'sem cache válido — precisa de internet pra validar a 1ª vez' };
   }
 
   try {
@@ -46,20 +58,18 @@ export async function validateLicense(licenseKey, { offline = false, operador = 
     clearTimeout(t);
     if (!res.ok) throw new Error(`http ${res.status}`);
     const result = await res.json();
-    await writeCache({ licenseKey, result, cachedAt: Date.now() });
+    if (result.valid) {
+      await writeCache({ licenseKey, result, cachedAt: Date.now() });
+    }
     return result;
   } catch (err) {
+    // Sem rede mas com cache válido? aceita.
     const cached = await readCache();
-    if (cached?.licenseKey === licenseKey && fresh(cached.cachedAt)) {
+    if (cached?.licenseKey === licenseKey && cached?.result?.valid === true) {
       return { ...cached.result, fromCache: true, offlineFallback: true };
     }
     return { valid: false, reason: `validação falhou: ${err.message}` };
   }
-}
-
-function fresh(ts) {
-  const ageDays = (Date.now() - ts) / (1000 * 60 * 60 * 24);
-  return ageDays < CACHE_TTL_DAYS;
 }
 
 async function readCache() {
