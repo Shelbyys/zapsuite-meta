@@ -1,18 +1,21 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import { LICENSE_CACHE } from './paths.js';
 import { ensureAppDir } from './config.js';
+import { getCurrentVersion } from './updater.js';
 
-const SUPABASE_URL = process.env.EASY4U_SUPABASE_URL || 'https://easy4u.supabase.co';
+const SUPABASE_URL = process.env.EASY4U_SUPABASE_URL || 'https://deolgsizilmcsjufodxn.supabase.co';
 const VALIDATE_FN = `${SUPABASE_URL}/functions/v1/validar-licenca`;
 const CACHE_TTL_DAYS = 7;
+const TIMEOUT_MS = 5000;
 
-export async function validateLicense(licenseKey, { offline = false } = {}) {
+export async function validateLicense(licenseKey, { offline = false, operador = null } = {}) {
   if (!licenseKey || licenseKey.length < 6) {
     return { valid: false, reason: 'formato inválido' };
   }
 
   if (process.env.EASY4U_DEV === '1' || licenseKey.startsWith('DEV-')) {
-    return { valid: true, plan: 'dev', maxAccounts: 99, dev: true };
+    return { valid: true, plan: 'dev', maxAccounts: 99, produtosLiberados: null, dev: true };
   }
 
   if (offline) {
@@ -24,11 +27,23 @@ export async function validateLicense(licenseKey, { offline = false } = {}) {
   }
 
   try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+
+    const cliVersion = await getCurrentVersion().catch(() => 'unknown');
     const res = await fetch(VALIDATE_FN, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ licenseKey, product: 'trafego_ai' }),
+      body: JSON.stringify({
+        licenseKey,
+        product: 'zapsuite_meta',
+        operador,
+        cliVersion,
+        os: os.platform(),
+      }),
+      signal: ctl.signal,
     });
+    clearTimeout(t);
     if (!res.ok) throw new Error(`http ${res.status}`);
     const result = await res.json();
     await writeCache({ licenseKey, result, cachedAt: Date.now() });

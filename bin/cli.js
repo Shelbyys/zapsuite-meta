@@ -4,6 +4,7 @@ import { runMenu } from '../src/commands/menu.js';
 import { runLogin } from '../src/commands/login.js';
 import { runDoctor } from '../src/commands/doctor.js';
 import { runUpdate } from '../src/commands/update.js';
+import { runSwitch } from '../src/commands/switch.js';
 import { showBanner } from '../src/lib/banner.js';
 import chalk from 'chalk';
 
@@ -14,6 +15,8 @@ const commands = {
   login: runLogin,
   doctor: runDoctor,
   update: runUpdate,
+  switch: runSwitch,
+  'switch-account': runSwitch,
   menu: runMenu,
 };
 
@@ -21,11 +24,13 @@ async function main() {
   if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
     showBanner();
     console.log(chalk.bold('\n  Comandos:\n'));
-    console.log(`    ${chalk.cyan('zapsuite-meta')}            menu interativo (default)`);
-    console.log(`    ${chalk.cyan('zapsuite-meta init')}       instalação inicial`);
-    console.log(`    ${chalk.cyan('zapsuite-meta login')}      reconecta a conta Meta`);
-    console.log(`    ${chalk.cyan('zapsuite-meta doctor')}     diagnóstico do sistema`);
-    console.log(`    ${chalk.cyan('zapsuite-meta update')}     atualiza templates\n`);
+    console.log(`    ${chalk.cyan('zsm')}                       menu interativo (default)`);
+    console.log(`    ${chalk.cyan('zsm init')}                  instalação inicial`);
+    console.log(`    ${chalk.cyan('zsm login')}                 reconecta a conta Meta`);
+    console.log(`    ${chalk.cyan('zsm switch')}                trocar de conta de anúncios ativa`);
+    console.log(`    ${chalk.cyan('zsm doctor')}                diagnóstico do sistema`);
+    console.log(`    ${chalk.cyan('zsm update')}                atualiza CLI + templates`);
+    console.log(chalk.dim(`\n  (zapsuite-meta == zsm — mesmo binário)\n`));
     return;
   }
 

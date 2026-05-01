@@ -9,6 +9,7 @@ import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../li
 import { renderAll } from '../installer/render-templates.js';
 import { DESKTOP_DIR } from '../lib/paths.js';
 import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
+import { logEvento, TIPO } from '../lib/telemetria.js';
 
 // Lista de produtos pré-cadastrados — precisa bater com templates/playbooks/*.yaml
 const PRODUTOS = [
@@ -60,7 +61,7 @@ export async function runInit() {
 
   const s1 = p.spinner();
   s1.start('Validando licença');
-  const lic = await validateLicense(licenseKey);
+  const lic = await validateLicense(licenseKey, { operador: null });
   if (!lic.valid) {
     s1.stop(chalk.red(`Licença inválida: ${lic.reason || 'desconhecido'}`));
     throw new Error('licença inválida');
@@ -147,6 +148,13 @@ export async function runInit() {
 
   // ---------- 8. Atalho no Desktop ----------
   await maybeCreateShortcut();
+
+  // ---------- 8b. Telemetria ----------
+  logEvento(TIPO.INIT, {
+    plan: lic.plan,
+    produtos: produtosAtivos,
+    limit: Number(budgetTeto),
+  });
 
   // ---------- 9. Final ----------
   p.outro(

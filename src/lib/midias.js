@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { imageSize } from 'image-size';
 import { APP_DIR } from './paths.js';
 
 const IMG_EXT   = new Set(['.jpg', '.jpeg', '.png', '.webp']);
@@ -10,6 +12,39 @@ const META_LIMITS = {
   image: { maxBytes: 30 * 1024 * 1024 },           // 30 MB
   video: { maxBytes: 4 * 1024 * 1024 * 1024 },     // 4 GB
 };
+
+// Aspect ratio com tolerância ±5%. Retorna o "label Meta":
+//   '9:16' (story/reel) · '1:1' (feed quadrado) · '4:5' (feed vertical)
+//   '16:9' (horizontal) · 'irregular' (cropping forçado pela Meta)
+function classifyAspect(w, h) {
+  if (!w || !h) return null;
+  const r = w / h;
+  const close = (target) => Math.abs(r - target) / target < 0.05;
+  if (close(9 / 16)) return '9:16';
+  if (close(1))      return '1:1';
+  if (close(4 / 5))  return '4:5';
+  if (close(16 / 9)) return '16:9';
+  return 'irregular';
+}
+
+function suggestPlacement(aspect) {
+  if (aspect === '9:16')      return 'ótimo pra Story/Reel; aceito no Feed';
+  if (aspect === '1:1')       return 'ótimo pra Feed; aceito no Story (com bordas)';
+  if (aspect === '4:5')       return 'ótimo pra Feed; ruim no Story';
+  if (aspect === '16:9')      return 'horizontal — ruim pra Story/Reel; só Feed';
+  if (aspect === 'irregular') return 'aspect fora do padrão — Meta pode cortar';
+  return null;
+}
+
+function readImageDimensions(filePath) {
+  try {
+    // image-size lê só o header, é rápido mesmo em PNG grande
+    const dim = imageSize(readFileSync(filePath));
+    return { width: dim.width, height: dim.height };
+  } catch {
+    return { width: null, height: null };
+  }
+}
 
 export const MIDIAS_DIR  = path.join(APP_DIR, 'midias');
 export const UPLOAD_DIR  = path.join(MIDIAS_DIR, 'upload');
@@ -67,6 +102,12 @@ export async function listAvailableMidias({ kind = 'all' } = {}) {
         if (!isImage && !isVideo) continue;
         if (kind === 'image' && !isImage) continue;
         if (kind === 'video' && !isVideo) continue;
+        let width = null, height = null, aspect = null, placementHint = null;
+        if (isImage) {
+          ({ width, height } = readImageDimensions(full));
+          aspect = classifyAspect(width, height);
+          placementHint = suggestPlacement(aspect);
+        }
         files.push({
           path: full,
           name: f,
@@ -76,6 +117,7 @@ export async function listAvailableMidias({ kind = 'all' } = {}) {
           sizeHuman: humanSize(st.size),
           modifiedAt: st.mtime,
           oversize: st.size > (isImage ? META_LIMITS.image.maxBytes : META_LIMITS.video.maxBytes),
+          width, height, aspect, placementHint,
         });
       }
     } catch {

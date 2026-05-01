@@ -31,10 +31,21 @@
     "chalk": "^5.3.0",
     "gradient-string": "^2.0.2",
     "handlebars": "^4.7.8",
+    "image-size": "^1.2.1",
     "open": "^10.1.0",
     "yaml": "^2.4.5"
   },
-  "keywords": ["zapsuite", "meta-ads", "facebook-ads", "instagram-ads", "claude-code", "mcp", "trafego", "anuncios", "easy4u"],
+  "keywords": [
+    "zapsuite",
+    "meta-ads",
+    "facebook-ads",
+    "instagram-ads",
+    "claude-code",
+    "mcp",
+    "trafego",
+    "anuncios",
+    "easy4u"
+  ],
   "author": "Easy Solutions LTDA",
   "license": "UNLICENSED",
   "repository": {

@@ -14,6 +14,12 @@ sem que o cliente peça explicitamente.
 
 ## Passos obrigatórios (nesta ordem)
 
+### 0. Conta configurada?
+Leia `~/.zapsuite-meta/config.json`. Se `meta.activeAdAccountId` estiver
+ausente, **pare** e oriente o operador a rodar `/configurar-conta`
+primeiro. Sem conta+página configuradas, qualquer chamada de criação
+de campanha vai falhar.
+
 ### 1. Carregue o playbook
 Leia `~/.zapsuite-meta/playbooks/{playbook}.yaml`. Se o arg `playbook=` não
 veio, liste os disponíveis e pergunte qual.

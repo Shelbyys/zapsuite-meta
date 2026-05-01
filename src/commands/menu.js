@@ -11,6 +11,7 @@ import { listAvailableMidias, openMidiasFolder, MIDIAS_DIR, UPLOAD_DIR } from '.
 import { APP_DIR } from '../lib/paths.js';
 import { checkForUpdateCached } from '../lib/updater.js';
 import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
+import { logEvento, TIPO } from '../lib/telemetria.js';
 
 // Whitelist de IDs de playbook válidos — bate com PLAYBOOKS abaixo. Bloqueia
 // shell injection caso playbookId venha alterado.
@@ -194,6 +195,7 @@ async function flowNovaCampanha(cfg) {
     p.note(`playbook desconhecido: ${playbookId}`, chalk.red('erro'));
     return;
   }
+  logEvento(TIPO.CAMPANHA_CRIADA, { playbook: playbookId, source: 'menu' });
   await delegateToClaude(`/nova-campanha playbook=${playbookId}`);
 }
 
@@ -219,7 +221,13 @@ async function flowMidias() {
   for (const m of midias) {
     const icon = m.kind === 'image' ? '🖼️ ' : '🎬';
     const flag = m.oversize ? chalk.red(' (acima do limite Meta!)') : '';
-    console.log(`  ${icon}  ${chalk.cyan(m.name)}  ${chalk.dim(`· ${m.folder}/ · ${m.sizeHuman}`)}${flag}`);
+    const dim  = (m.width && m.height) ? chalk.dim(` · ${m.width}×${m.height}`) : '';
+    const ar   = m.aspect ? chalk.dim(` · ${m.aspect}`) : '';
+    console.log(`  ${icon}  ${chalk.cyan(m.name)}  ${chalk.dim(`· ${m.folder}/ · ${m.sizeHuman}`)}${dim}${ar}${flag}`);
+    if (m.placementHint) {
+      const isWarn = m.aspect === '16:9' || m.aspect === 'irregular';
+      console.log(`        ${(isWarn ? chalk.yellow : chalk.dim)('↳ ' + m.placementHint)}`);
+    }
   }
   console.log();
 
@@ -239,9 +247,14 @@ async function flowPausar() {
 }
 
 async function flowConfig(cfg) {
+  const ativa = cfg.meta?.activeAdAccountName
+    ? `${cfg.meta.activeAdAccountName} (${cfg.meta.activeAdAccountId})`
+    : '— nenhuma —';
+
   const opt = await p.select({
-    message: 'Configurações',
+    message: `Configurações  ${chalk.dim(`· conta ativa: ${ativa}`)}`,
     options: [
+      { value: 'switch',   label: '🔁  Trocar conta de anúncios' },
       { value: 'update',   label: '⬆️   Atualizar ZapSuite Meta (npm + templates)' },
       { value: 'login',    label: '🔄  Reconectar conta Meta' },
       { value: 'doctor',   label: '🩺  Diagnóstico do sistema' },
@@ -249,6 +262,7 @@ async function flowConfig(cfg) {
     ],
   });
   if (p.isCancel(opt) || opt === 'voltar') return;
+  if (opt === 'switch') return import('./switch.js').then(m => m.runSwitch());
   if (opt === 'login')  return import('./login.js').then(m => m.runLogin());
   if (opt === 'doctor') return import('./doctor.js').then(m => m.runDoctor());
   if (opt === 'update') return import('./update.js').then(m => m.runUpdate());

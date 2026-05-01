@@ -55,6 +55,9 @@ export async function runDoctor() {
       ? `${cfg.operador.produtosAtivos.length} ativo(s)`
       : 'todos liberados'));
     console.log(chalk.dim('  Limite:    ') + `R$ ${cfg.limits?.dailyBudgetMax}/dia`);
+    console.log(chalk.dim('  Conta Meta:') + ' ' + (cfg.meta?.activeAdAccountName
+      ? `${cfg.meta.activeAdAccountName} (${cfg.meta.activeAdAccountId})`
+      : chalk.yellow('não configurada — rode /configurar-conta no Claude Code')));
     console.log();
   }
 
