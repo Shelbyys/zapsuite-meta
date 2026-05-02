@@ -39,16 +39,21 @@ export async function runInit() {
   await ensureAppDir();
 
   // ---------- 1. Claude Code ----------
-  await p.tasks([
-    {
-      title: 'Verificando Claude Code',
-      task: async () => {
-        if (isClaudeCodeInstalled()) return chalk.green('Claude Code já instalado');
-        installClaudeCode();
-        return chalk.green('Claude Code instalado');
-      },
-    },
-  ]);
+  const sCC = p.spinner();
+  sCC.start('Verificando Claude Code');
+  if (isClaudeCodeInstalled()) {
+    sCC.stop(chalk.green('Claude Code já instalado'));
+  } else {
+    sCC.stop(chalk.yellow('Claude Code não encontrado — instalando...'));
+    try {
+      installClaudeCode();
+      console.log(chalk.green('  ✓ Claude Code instalado'));
+    } catch (err) {
+      console.log(chalk.red(`  ✗ Falhou: ${err.message}`));
+      console.log(chalk.dim(`  Instale manualmente: npm i -g @anthropic-ai/claude-code`));
+      throw new Error('Claude Code não pôde ser instalado');
+    }
+  }
 
   // ---------- 2. Email ----------
   const email = await p.text({
