@@ -1,10 +1,10 @@
 import { loadConfig } from './config.js';
+import { getMachineId } from './machine.js';
 
 const SUPABASE_URL = process.env.EASY4U_SUPABASE_URL || 'https://deolgsizilmcsjufodxn.supabase.co';
 const LOG_FN = `${SUPABASE_URL}/functions/v1/log-evento`;
 const TIMEOUT_MS = 3000;
 
-// Tipos válidos (espelha o backend)
 export const TIPO = Object.freeze({
   INIT:                 'init',
   CAMPANHA_CRIADA:      'campanha_criada',
@@ -24,7 +24,7 @@ export async function logEvento(tipo, payload = {}) {
   try {
     const cfg = await loadConfig();
     if (!cfg || cfg.telemetry !== true) return;
-    if (!cfg.licenseKey) return;
+    if (!cfg.email) return;
 
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
@@ -33,8 +33,8 @@ export async function logEvento(tipo, payload = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        licenseKey: cfg.licenseKey,
-        operador: cfg.operador?.nome || null,
+        email: cfg.email,
+        machineId: getMachineId(),
         tipo,
         payload,
       }),

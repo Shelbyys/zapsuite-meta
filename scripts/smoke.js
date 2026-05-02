@@ -7,7 +7,7 @@ import { runDoctor } from '../src/commands/doctor.js';
 import { ensureMidiasFolders } from '../src/lib/midias.js';
 
 const fakeCfg = {
-  licenseKey: 'DEV-SMOKE-0001',
+  email: 'dev+smoke@zapsuite.test',
   plan: 'dev',
   operador: {
     nome: 'Time DEV (smoke)',

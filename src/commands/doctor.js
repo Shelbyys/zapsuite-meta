@@ -50,7 +50,9 @@ export async function runDoctor() {
   console.log();
 
   if (cfg) {
+    console.log(chalk.dim('  Email:     ') + chalk.bold(cfg.email || '—'));
     console.log(chalk.dim('  Operador:  ') + chalk.bold(cfg.operador?.nome || '—'));
+    console.log(chalk.dim('  Plano:     ') + (cfg.plan || '—'));
     console.log(chalk.dim('  Produtos:  ') + (cfg.operador?.produtosAtivos?.length
       ? `${cfg.operador.produtosAtivos.length} ativo(s)`
       : 'todos liberados'));

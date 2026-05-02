@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { showBanner } from '../lib/banner.js';
-import { validateLicense } from '../lib/licenca.js';
+import { validateByEmail } from '../lib/licenca.js';
 import { patchConfig, ensureAppDir } from '../lib/config.js';
 import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
@@ -11,7 +11,6 @@ import { DESKTOP_DIR } from '../lib/paths.js';
 import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
 import { logEvento, TIPO } from '../lib/telemetria.js';
 
-// Lista de produtos pré-cadastrados — precisa bater com templates/playbooks/*.yaml
 const PRODUTOS = [
   { value: 'hay-hair',          label: 'Hay Hair' },
   { value: 'movi-mint',         label: 'Movi Mint' },
@@ -51,33 +50,18 @@ export async function runInit() {
     },
   ]);
 
-  // ---------- 2. Licença ----------
-  const licenseKey = await p.text({
-    message: 'Cole sua licença Easy4u (ou DEV-XXXX pra modo desenvolvedor):',
-    placeholder: 'EZ4U-XXXX-XXXX-XXXX',
-    validate: v => (!v || v.length < 6 ? 'licença inválida' : undefined),
+  // ---------- 2. Email ----------
+  const email = await p.text({
+    message: 'Qual seu email de cadastro Easy4u?',
+    placeholder: 'voce@exemplo.com',
+    validate: v => {
+      if (!v) return 'obrigatório';
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'formato de email inválido';
+    },
   });
-  if (p.isCancel(licenseKey)) throw new Error('cancelled');
+  if (p.isCancel(email)) throw new Error('cancelled');
 
-  const s1 = p.spinner();
-  s1.start('Validando licença');
-  const lic = await validateLicense(licenseKey, { operador: null });
-  if (!lic.valid) {
-    s1.stop(chalk.red(`Licença inválida: ${lic.reason || 'desconhecido'}`));
-    throw new Error('licença inválida');
-  }
-  s1.stop(
-    chalk.green(
-      `Licença válida ${lic.dev ? chalk.dim('(modo dev)') : ''}${lic.fromCache ? chalk.dim(' (cache)') : ''}`
-    )
-  );
-
-  // ---------- 3. Perfil de operação (curto) ----------
-  p.note(
-    'Vou perguntar 3 coisas pra deixar tudo do seu jeito.',
-    chalk.cyan('briefing')
-  );
-
+  // ---------- 3. Operador (vai junto pra autorizar) ----------
   const operadorNome = await p.text({
     message: 'Como você quer ser chamado? (aparece no topo do menu)',
     placeholder: 'Ex.: Time Easy4u · Ana · Operação 1',
@@ -85,6 +69,21 @@ export async function runInit() {
   });
   if (p.isCancel(operadorNome)) throw new Error('cancelled');
 
+  // ---------- 4. Validação ----------
+  const s1 = p.spinner();
+  s1.start('Autorizando seu email');
+  const lic = await validateByEmail(email, { operador: operadorNome });
+  if (!lic.valid) {
+    s1.stop(chalk.red(`Não autorizado: ${lic.reason}`));
+    throw new Error('email não autorizado');
+  }
+  s1.stop(
+    chalk.green(
+      `Autorizado ${lic.dev ? chalk.dim('(modo dev)') : ''}${lic.fromCache ? chalk.dim(' (cache)') : ''} · plano ${lic.plan} · até ${lic.maxAccounts} dispositivos`
+    )
+  );
+
+  // ---------- 5. Produtos ----------
   const produtosAtivos = await p.multiselect({
     message: 'Quais produtos você promove? (espaço pra marcar, enter pra confirmar)',
     options: PRODUTOS,
@@ -93,6 +92,7 @@ export async function runInit() {
   });
   if (p.isCancel(produtosAtivos)) throw new Error('cancelled');
 
+  // ---------- 6. Limite hard ----------
   const budgetTeto = await p.text({
     message: chalk.yellow('Limite máximo de gasto diário (R$) — somando TODAS as campanhas ativas:'),
     placeholder: '300',
@@ -106,32 +106,29 @@ export async function runInit() {
   });
   if (p.isCancel(telemetria)) throw new Error('cancelled');
 
-  // ---------- 4. Salvar config ----------
+  // ---------- 7. Salvar config ----------
   const config = {
-    licenseKey,
+    email: email.trim().toLowerCase(),
     plan: lic.plan,
     operador: {
       nome: operadorNome,
-      produtosAtivos: produtosAtivos.length ? produtosAtivos : null, // null = todos liberados
+      produtosAtivos: produtosAtivos.length ? produtosAtivos : null,
     },
-    limits: {
-      dailyBudgetMax: Number(budgetTeto),
-    },
+    limits: { dailyBudgetMax: Number(budgetTeto) },
     telemetry: telemetria,
     installedAt: new Date().toISOString(),
   };
   await patchConfig(config);
 
-  // ---------- 5. Pasta de mídias ----------
+  // ---------- 8. Pasta de mídias ----------
   await ensureMidiasFolders();
 
-  // ---------- 6. Render templates ----------
+  // ---------- 9. Render templates ----------
   const s3 = p.spinner();
   s3.start('Gerando arquivos do Claude Code (CLAUDE.md, agentes, slash commands, playbooks)');
-  const today = new Date().toISOString().slice(0, 10);
   await renderAll({
     ...config,
-    today,
+    today: new Date().toISOString().slice(0, 10),
     produtosAtivosLabels: (produtosAtivos.length
       ? PRODUTOS.filter(p => produtosAtivos.includes(p.value)).map(p => p.label)
       : ['(todos os 16 produtos liberados)']
@@ -139,24 +136,24 @@ export async function runInit() {
   });
   s3.stop(chalk.green('Arquivos gerados em ~/.zapsuite-meta/'));
 
-  // ---------- 7. MCP da Meta no Claude Code ----------
+  // ---------- 10. MCP da Meta no Claude Code ----------
   const s4 = p.spinner();
   s4.start('Registrando MCP da Meta no Claude Code (mcp.facebook.com/ads)');
   const mcp = registerMetaMcp('user');
   if (mcp.ok) s4.stop(chalk.green('MCP da Meta registrado'));
   else s4.stop(chalk.yellow(`MCP não registrado automaticamente: ${mcp.error}`));
 
-  // ---------- 8. Atalho no Desktop ----------
+  // ---------- 11. Atalho no Desktop ----------
   await maybeCreateShortcut();
 
-  // ---------- 8b. Telemetria ----------
+  // ---------- 12. Telemetria ----------
   logEvento(TIPO.INIT, {
     plan: lic.plan,
     produtos: produtosAtivos,
     limit: Number(budgetTeto),
   });
 
-  // ---------- 9. Final ----------
+  // ---------- 13. Final ----------
   p.outro(
     [
       chalk.green.bold('Pronto!'),
@@ -181,7 +178,5 @@ async function maybeCreateShortcut() {
     const shortcut = path.join(DESKTOP_DIR, 'ZapSuite Meta.command');
     const body = `#!/bin/zsh\ncd "$HOME"\nexec zapsuite-meta\n`;
     await fs.writeFile(shortcut, body, { mode: 0o755 });
-  } catch {
-    // Desktop pode não existir; ignorar.
-  }
+  } catch {}
 }
