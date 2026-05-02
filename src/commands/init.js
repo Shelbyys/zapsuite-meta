@@ -6,7 +6,12 @@ import { spawn } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
 import { validateByEmail } from '../lib/licenca.js';
 import { patchConfig, ensureAppDir } from '../lib/config.js';
-import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../lib/claude-detect.js';
+import {
+  isClaudeCodeInstalled,
+  isClaudeCodeConfigured,
+  installClaudeCode,
+  registerMetaMcp,
+} from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
 import { DESKTOP_DIR, APP_DIR } from '../lib/paths.js';
 import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
@@ -35,28 +40,50 @@ export async function runInit() {
   console.clear();
   showBanner('Instalação · ~2 minutos');
 
-  p.intro(chalk.bgMagenta.white(' ZapSuite Meta · setup '));
-
   await ensureAppDir();
 
-  // ---------- 1. Claude Code ----------
+  // ============================================================
+  // FASE 1 · pré-checks (Claude Code instalado E logado)
+  // ============================================================
+  p.intro(chalk.bgMagenta.white(' ZapSuite Meta · setup '));
+
   const sCC = p.spinner();
   sCC.start('Verificando Claude Code');
-  if (isClaudeCodeInstalled()) {
-    sCC.stop(chalk.green('Claude Code já instalado'));
-  } else {
+  if (!isClaudeCodeInstalled()) {
     sCC.stop(chalk.yellow('Claude Code não encontrado — instalando...'));
     try {
       installClaudeCode();
       console.log(chalk.green('  ✓ Claude Code instalado'));
     } catch (err) {
       console.log(chalk.red(`  ✗ Falhou: ${err.message}`));
-      console.log(chalk.dim(`  Instale manualmente: npm i -g @anthropic-ai/claude-code`));
+      console.log(chalk.dim(`  Instala manualmente: npm i -g @anthropic-ai/claude-code`));
       throw new Error('Claude Code não pôde ser instalado');
     }
+  } else {
+    sCC.stop(chalk.green('Claude Code instalado'));
   }
 
-  // ---------- 2. Operador (perguntado primeiro pra reusar no retry) ----------
+  if (!isClaudeCodeConfigured()) {
+    p.note(
+      [
+        'O Claude Code está instalado, mas você ainda não fez login com sua conta Anthropic.',
+        '',
+        chalk.bold('Faça assim antes de continuar:'),
+        '',
+        `  1. Abra ${chalk.cyan('outro terminal')} ${chalk.dim('(ou outra aba)')}`,
+        `  2. Digite: ${chalk.cyan('claude')}`,
+        '  3. O navegador abre — faz login em claude.ai com sua conta Pro/Team/Max',
+        '  4. Volta aqui e roda de novo: ' + chalk.cyan('zsm init'),
+      ].join('\n'),
+      chalk.yellow('preciso do Claude Code logado')
+    );
+    p.outro(chalk.dim('Setup pausado. Volta quando logar no Claude Code.'));
+    throw new Error('cancelled');
+  }
+
+  // ============================================================
+  // FASE 2 · operador + email (validado)
+  // ============================================================
   const operadorNome = await p.text({
     message: 'Como você quer ser chamado? (aparece no topo do menu)',
     placeholder: 'Ex.: Time da loja · Ana · Operação 1',
@@ -64,7 +91,6 @@ export async function runInit() {
   });
   if (p.isCancel(operadorNome)) throw new Error('cancelled');
 
-  // ---------- 3. Email + validação (com retry até 3 tentativas) ----------
   let email = null;
   let lic = null;
   for (let tentativa = 1; tentativa <= 3; tentativa++) {
@@ -94,10 +120,7 @@ export async function runInit() {
     s1.stop(chalk.red(`✗ ${lic.reason}`));
 
     if (tentativa < 3) {
-      const tentar = await p.confirm({
-        message: 'Tentar com outro email?',
-        initialValue: true,
-      });
+      const tentar = await p.confirm({ message: 'Tentar com outro email?', initialValue: true });
       if (p.isCancel(tentar) || !tentar) throw new Error('cancelled');
     }
   }
@@ -106,7 +129,86 @@ export async function runInit() {
     throw new Error('email não autorizado');
   }
 
-  // ---------- 5. Produtos ----------
+  // Salva o mínimo já — pra Claude conseguir ler config se precisar
+  await patchConfig({ email: email.toLowerCase(), plan: lic.plan, operador: { nome: operadorNome } });
+
+  // Renderiza templates já agora (pra /configurar-conta existir como slash command)
+  await ensureMidiasFolders();
+  const today = new Date().toISOString().slice(0, 10);
+  await renderAll({
+    email: email.toLowerCase(),
+    plan: lic.plan,
+    operador: { nome: operadorNome, produtosAtivos: null },
+    limits: { dailyBudgetMax: 0 },  // placeholder
+    telemetry: false,
+    today,
+    produtosAtivosLabels: ['(a definir)'],
+  });
+
+  // Registra MCP da Meta no Claude Code (agora que tá logado, deve passar)
+  const mcp = registerMetaMcp('user');
+  if (!mcp.ok) {
+    p.note(
+      `Não consegui registrar o MCP da Meta automaticamente.\nVocê pode rodar manualmente:\n  ${chalk.cyan('claude mcp add --transport http --scope user meta https://mcp.facebook.com/ads')}`,
+      chalk.yellow('atenção')
+    );
+  }
+
+  // ============================================================
+  // FASE 3 · CONECTAR FACEBOOK (logo após email)
+  // ============================================================
+  p.note(
+    [
+      'Agora vou abrir o Claude Code pra você conectar sua conta do Facebook.',
+      'É um processo de 3 passos rápidos lá dentro.',
+    ].join('\n'),
+    chalk.cyan('próximo passo: Facebook')
+  );
+  const conectar = await p.confirm({ message: 'Abrir agora?', initialValue: true });
+  if (p.isCancel(conectar)) throw new Error('cancelled');
+
+  // Encerra o Clack pra spawnar o Claude sem quebrar a UI
+  p.outro(chalk.dim('Pausando setup — abrindo Claude Code...'));
+
+  if (conectar) {
+    console.log();
+    console.log(chalk.bold.bgCyan.black(' QUANDO O CLAUDE CODE ABRIR — DIGITE: '));
+    console.log();
+    console.log(`  ${chalk.bold.cyan('1.')}  ${chalk.bold.cyan('/mcp')}`);
+    console.log(`      ${chalk.dim('Aparece a lista de servidores MCP. Procura "meta".')}`);
+    console.log(`      ${chalk.dim('Seleciona e ele abre o navegador pra você logar no Facebook.')}`);
+    console.log(`      ${chalk.dim('Autoriza tudo que ele pedir → fecha o navegador → volta no terminal.')}`);
+    console.log();
+    console.log(`  ${chalk.bold.cyan('2.')}  ${chalk.bold.cyan('/configurar-conta')}`);
+    console.log(`      ${chalk.dim('Ele lista suas contas de anúncios e pergunta qual usar.')}`);
+    console.log(`      ${chalk.dim('Confirma página, Instagram, forma de pagamento.')}`);
+    console.log();
+    console.log(`  ${chalk.bold.cyan('3.')}  ${chalk.bold.cyan('/quit')} ${chalk.dim('(ou Ctrl+C 2x)')}`);
+    console.log(`      ${chalk.dim('Você volta aqui automaticamente pra finalizar o setup.')}`);
+    console.log();
+    console.log(chalk.dim('─────────────────────────────────────────────────'));
+    console.log(chalk.cyan('Abrindo Claude Code em 3 segundos...'));
+    console.log();
+    await new Promise(r => setTimeout(r, 3000));
+
+    await new Promise(resolve => {
+      const child = spawn('claude', [], { stdio: 'inherit', cwd: APP_DIR });
+      child.on('exit', () => resolve());
+      child.on('error', err => {
+        console.log(chalk.red(`\n  Erro: ${err.message}\n`));
+        resolve();
+      });
+    });
+    console.log(chalk.dim('\n← Voltando ao setup do ZapSuite Meta...\n'));
+  } else {
+    console.log(chalk.dim('\n  Pulou Facebook — você pode conectar depois pelo menu.\n'));
+  }
+
+  // ============================================================
+  // FASE 4 · resto da config (produtos, limite, telemetria)
+  // ============================================================
+  p.intro(chalk.bgMagenta.white(' continuação · últimas perguntas '));
+
   const produtosAtivos = await p.multiselect({
     message: 'Quais produtos você promove? (espaço pra marcar, enter pra confirmar)',
     options: PRODUTOS,
@@ -115,7 +217,6 @@ export async function runInit() {
   });
   if (p.isCancel(produtosAtivos)) throw new Error('cancelled');
 
-  // ---------- 6. Limite hard ----------
   const budgetTeto = await p.text({
     message: chalk.yellow('Limite máximo de gasto diário (R$) — somando TODAS as campanhas ativas:'),
     placeholder: '300',
@@ -129,7 +230,9 @@ export async function runInit() {
   });
   if (p.isCancel(telemetria)) throw new Error('cancelled');
 
-  // ---------- 7. Salvar config ----------
+  // ============================================================
+  // FASE 5 · salvar tudo + atalho + final
+  // ============================================================
   const config = {
     email: email.trim().toLowerCase(),
     plan: lic.plan,
@@ -143,72 +246,36 @@ export async function runInit() {
   };
   await patchConfig(config);
 
-  // ---------- 8. Pasta de mídias ----------
-  await ensureMidiasFolders();
-
-  // ---------- 9. Render templates ----------
-  const s3 = p.spinner();
-  s3.start('Gerando arquivos do Claude Code (CLAUDE.md, agentes, slash commands, playbooks)');
+  const sR = p.spinner();
+  sR.start('Atualizando templates com seus dados finais');
   await renderAll({
     ...config,
-    today: new Date().toISOString().slice(0, 10),
+    today,
     produtosAtivosLabels: (produtosAtivos.length
-      ? PRODUTOS.filter(p => produtosAtivos.includes(p.value)).map(p => p.label)
+      ? PRODUTOS.filter(pp => produtosAtivos.includes(pp.value)).map(pp => pp.label)
       : ['(todos os 16 produtos liberados)']
     ),
   });
-  s3.stop(chalk.green('Arquivos gerados em ~/.zapsuite-meta/'));
+  sR.stop(chalk.green('Templates atualizados'));
 
-  // ---------- 10. MCP da Meta no Claude Code ----------
-  const s4 = p.spinner();
-  s4.start('Registrando MCP da Meta no Claude Code (mcp.facebook.com/ads)');
-  const mcp = registerMetaMcp('user');
-  if (mcp.ok) s4.stop(chalk.green('MCP da Meta registrado'));
-  else s4.stop(chalk.yellow(`MCP não registrado automaticamente: ${mcp.error}`));
-
-  // ---------- 11. Atalho no Desktop ----------
   await maybeCreateShortcut();
 
-  // ---------- 12. Telemetria ----------
   logEvento(TIPO.INIT, {
     plan: lic.plan,
     produtos: produtosAtivos,
     limit: Number(budgetTeto),
   });
 
-  // ---------- 13. Conectar Facebook agora? ----------
-  const conectar = await p.confirm({
-    message: chalk.bold('Conectar sua conta do Facebook agora?') + chalk.dim(' (recomendado · ~1min · abre Claude Code)'),
-    initialValue: true,
-  });
-
-  // ---------- 14. Final (encerra clack antes de chamar claude) ----------
   p.outro(
     [
-      chalk.green.bold('Setup concluído!'),
+      chalk.green.bold('✓ Setup concluído!'),
       '',
       chalk.bold('Como usar:'),
-      `  • Rode ${chalk.cyan('zsm')} ou clique no atalho ${chalk.cyan('"ZapSuite Meta.command"')} no Desktop`,
-      `  • Coloque suas fotos/vídeos com ${chalk.cyan('📁 Minhas mídias → 📥 Adicionar')} (arrasta o arquivo pro terminal)`,
-      `  • Escolha ${chalk.cyan('🚀 Subir nova campanha')} pra subir uma estrutura validada`,
+      `  • Rode ${chalk.cyan('zsm')} ou clique em ${chalk.cyan('"ZapSuite Meta.command"')} no Desktop`,
+      `  • ${chalk.cyan('📁 Minhas mídias → 📥 Adicionar')} pra colocar suas fotos/vídeos`,
+      `  • ${chalk.cyan('🚀 Subir nova campanha')} quando estiver pronto`,
     ].join('\n')
   );
-
-  // Fora do Clack — agora é seguro rodar Claude Code
-  if (!p.isCancel(conectar) && conectar) {
-    if (!isClaudeCodeInstalled()) {
-      console.log(chalk.yellow('\n  Claude Code não tá instalado — pula a conexão. Roda `zsm doctor` depois.\n'));
-      return;
-    }
-    console.log(chalk.cyan('\n→ Abrindo Claude Code com /configurar-conta...\n'));
-    await new Promise(resolve => {
-      const child = spawn('claude', ['-p', '/configurar-conta'], { stdio: 'inherit', cwd: APP_DIR });
-      child.on('exit', () => resolve());
-      child.on('error', () => resolve());
-    });
-  } else {
-    console.log(chalk.dim('\n  Quando estiver pronto, escolha "🔌 Conectar conta Meta" no menu.\n'));
-  }
 }
 
 async function maybeCreateShortcut() {
