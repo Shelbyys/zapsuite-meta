@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
-import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
+import { isClaudeCodeInstalled, isClaudeCodeConfigured } from '../lib/claude-detect.js';
 import { APP_DIR } from '../lib/paths.js';
 import { listAvailableMidias, MIDIAS_DIR } from '../lib/midias.js';
 
@@ -16,7 +16,12 @@ export async function runDoctor() {
   const cfg = await loadConfig();
   checks.push(['Config (~/.zapsuite-meta/config.json)', !!cfg]);
 
-  checks.push(['Claude Code instalado',                    isClaudeCodeInstalled()]);
+  const ccInstalled = isClaudeCodeInstalled();
+  checks.push(['Claude Code instalado', ccInstalled]);
+  if (ccInstalled) {
+    const cfg = isClaudeCodeConfigured();
+    checks.push([cfg ? 'Claude Code configurado (já foi rodado pelo menos 1 vez)' : 'Claude Code NUNCA foi rodado — abra o terminal e digite `claude` pra logar', cfg]);
+  }
 
   const claudeMd = await fileExists(path.join(APP_DIR, 'CLAUDE.md'));
   checks.push(['CLAUDE.md gerado',                         claudeMd]);
