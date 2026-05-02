@@ -1,6 +1,6 @@
 {
   "name": "@zapsuite/meta",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ZapSuite Meta — sobe campanha completa no Facebook/Instagram Ads dentro do Claude Code, usando as fotos e vídeos do próprio cliente.",
   "type": "module",
   "bin": {
