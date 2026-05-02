@@ -55,38 +55,55 @@ export async function runInit() {
     }
   }
 
-  // ---------- 2. Email ----------
-  const email = await p.text({
-    message: 'Qual seu email de cadastro Easy4u?',
-    placeholder: 'voce@exemplo.com',
-    validate: v => {
-      if (!v) return 'obrigatório';
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'formato de email inválido';
-    },
-  });
-  if (p.isCancel(email)) throw new Error('cancelled');
-
-  // ---------- 3. Operador (vai junto pra autorizar) ----------
+  // ---------- 2. Operador (perguntado primeiro pra reusar no retry) ----------
   const operadorNome = await p.text({
     message: 'Como você quer ser chamado? (aparece no topo do menu)',
-    placeholder: 'Ex.: Time Easy4u · Ana · Operação 1',
+    placeholder: 'Ex.: Time da loja · Ana · Operação 1',
     validate: v => (!v ? 'obrigatório' : undefined),
   });
   if (p.isCancel(operadorNome)) throw new Error('cancelled');
 
-  // ---------- 4. Validação ----------
-  const s1 = p.spinner();
-  s1.start('Autorizando seu email');
-  const lic = await validateByEmail(email, { operador: operadorNome });
-  if (!lic.valid) {
-    s1.stop(chalk.red(`Não autorizado: ${lic.reason}`));
+  // ---------- 3. Email + validação (com retry até 3 tentativas) ----------
+  let email = null;
+  let lic = null;
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    const tentativaTxt = tentativa === 1 ? '' : chalk.dim(` (tentativa ${tentativa}/3)`);
+    const input = await p.text({
+      message: `Qual seu email cadastrado?${tentativaTxt}`,
+      placeholder: 'voce@exemplo.com',
+      validate: v => {
+        if (!v) return 'obrigatório';
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'formato de email inválido';
+      },
+    });
+    if (p.isCancel(input)) throw new Error('cancelled');
+
+    const s1 = p.spinner();
+    s1.start('Autorizando');
+    lic = await validateByEmail(input, { operador: operadorNome });
+    if (lic.valid) {
+      email = input;
+      s1.stop(
+        chalk.green(
+          `Autorizado ${lic.dev ? chalk.dim('(modo dev)') : ''}${lic.fromCache ? chalk.dim(' (cache)') : ''} · plano ${lic.plan} · até ${lic.maxAccounts} dispositivos`
+        )
+      );
+      break;
+    }
+    s1.stop(chalk.red(`✗ ${lic.reason}`));
+
+    if (tentativa < 3) {
+      const tentar = await p.confirm({
+        message: 'Tentar com outro email?',
+        initialValue: true,
+      });
+      if (p.isCancel(tentar) || !tentar) throw new Error('cancelled');
+    }
+  }
+  if (!email) {
+    p.note('Sua autorização não passou em 3 tentativas. Verifica o email no painel ou fala com o suporte.', chalk.red('parando aqui'));
     throw new Error('email não autorizado');
   }
-  s1.stop(
-    chalk.green(
-      `Autorizado ${lic.dev ? chalk.dim('(modo dev)') : ''}${lic.fromCache ? chalk.dim(' (cache)') : ''} · plano ${lic.plan} · até ${lic.maxAccounts} dispositivos`
-    )
-  );
 
   // ---------- 5. Produtos ----------
   const produtosAtivos = await p.multiselect({
@@ -106,7 +123,7 @@ export async function runInit() {
   if (p.isCancel(budgetTeto)) throw new Error('cancelled');
 
   const telemetria = await p.confirm({
-    message: 'Pode mandar eventos anônimos pro time Easy4u melhorar o produto? (opt-in)',
+    message: 'Pode mandar eventos anônimos pro time melhorar o produto? (opt-in)',
     initialValue: true,
   });
   if (p.isCancel(telemetria)) throw new Error('cancelled');
