@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { showBanner, showHeader } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
 import { runInit } from './init.js';
-import { listAvailableMidias, openMidiasFolder, MIDIAS_DIR, UPLOAD_DIR } from '../lib/midias.js';
+import { listAvailableMidias, openMidiasFolder, addMediaFromPath, MIDIAS_DIR, UPLOAD_DIR } from '../lib/midias.js';
 import { APP_DIR } from '../lib/paths.js';
 import { checkForUpdateCached } from '../lib/updater.js';
 import { isClaudeCodeInstalled } from '../lib/claude-detect.js';
@@ -71,12 +71,17 @@ export async function runMenu() {
   }).catch(() => {});
 
   while (true) {
+    cfg = await loadConfig();  // recarrega — pode ter mudado entre iterações
     const midias = await listAvailableMidias();
     const totalMidias = midias.length;
+    const metaConectada = !!cfg?.meta?.activeAdAccountId;
 
     const action = await p.select({
       message: 'O que você quer fazer?',
       options: [
+        ...(metaConectada
+          ? []
+          : [{ value: 'connect', label: '🔌  ' + chalk.yellow('Conectar conta Meta') + chalk.dim(' · 1ª vez') }]),
         { value: 'nova',     label: '🚀  Subir nova campanha' },
         { value: 'midias',   label: `📁  Minhas mídias (${totalMidias} arquivo${totalMidias === 1 ? '' : 's'})` },
         { value: 'rel-hoje', label: '📊  Ver como tão meus anúncios (hoje)' },
@@ -96,6 +101,7 @@ export async function runMenu() {
       return;
     }
 
+    if (action === 'connect')  await delegateToClaude('/configurar-conta');
     if (action === 'nova')     await flowNovaCampanha(cfg);
     if (action === 'midias')   await flowMidias();
     if (action === 'rel-hoje') await delegateToClaude('/relatorio-hoje');
@@ -110,6 +116,32 @@ export async function runMenu() {
 }
 
 async function flowNovaCampanha(cfg) {
+  // GUARD — sem conta Meta conectada não dá pra subir campanha
+  if (!cfg?.meta?.activeAdAccountId) {
+    p.note(
+      [
+        'Antes de subir campanha, você precisa conectar sua conta do Facebook.',
+        '',
+        'Vou abrir o Claude Code com /configurar-conta — ele te guia passo a passo:',
+        '  • Lista suas contas de anúncios e você escolhe',
+        '  • Confirma página + Instagram + forma de pagamento',
+        '  • Salva tudo aqui pra próxima vez',
+      ].join('\n'),
+      chalk.yellow('preciso conectar Meta primeiro')
+    );
+    const go = await p.confirm({ message: 'Conectar agora?', initialValue: true });
+    if (p.isCancel(go) || !go) return;
+    await delegateToClaude('/configurar-conta');
+
+    // recarrega config — Claude pode ter atualizado meta.activeAdAccountId
+    const updated = await loadConfig();
+    if (!updated?.meta?.activeAdAccountId) {
+      p.note('Conta Meta ainda não configurada. Volta quando concluir.', chalk.dim('cancelado'));
+      return;
+    }
+    cfg = updated;
+  }
+
   const playbookId = await p.select({
     message: 'Qual produto vai promover?',
     options: PLAYBOOKS,
@@ -234,12 +266,64 @@ async function flowMidias() {
   const action = await p.select({
     message: 'O que fazer?',
     options: [
-      { value: 'open',  label: '📂  Abrir pasta no Finder (pra adicionar/remover)' },
+      { value: 'add',    label: '📥  Adicionar foto/vídeo (cola o caminho ou arrasta o arquivo)' },
+      { value: 'open',   label: '📂  Abrir a pasta no Finder/Explorer' },
       { value: 'voltar', label: '← voltar' },
     ],
   });
   if (p.isCancel(action) || action === 'voltar') return;
-  if (action === 'open') openMidiasFolder('upload');
+  if (action === 'open') return openMidiasFolder('upload');
+  if (action === 'add')  return flowAdicionarMidia();
+}
+
+async function flowAdicionarMidia() {
+  const isMac = process.platform === 'darwin';
+  const isWin = process.platform === 'win32';
+
+  p.note(
+    [
+      isMac
+        ? `${chalk.bold('Mac:')} arrasta o arquivo (ou pasta inteira) do Finder pra dentro desta janela do Terminal — o caminho aparece sozinho.`
+        : isWin
+          ? `${chalk.bold('Windows:')} clica com botão direito no arquivo → "Copiar como caminho" → cola aqui.\nOu arrasta da janela do Explorer pra dentro do PowerShell.`
+          : `Cole o caminho absoluto do arquivo ou pasta. Ex: ${chalk.cyan('/home/voce/foto.jpg')}`,
+      '',
+      `Aceita: ${chalk.dim('.jpg .jpeg .png .webp .mp4 .mov .m4v')}`,
+      `Pode ser um arquivo único ${chalk.dim('OU')} uma pasta (copia tudo de dentro).`,
+    ].join('\n'),
+    chalk.cyan('como adicionar')
+  );
+
+  const raw = await p.text({
+    message: 'Caminho do arquivo ou pasta:',
+    placeholder: isMac ? '/Users/voce/Downloads/foto.jpg' : isWin ? 'C:\\Users\\voce\\Downloads\\foto.jpg' : '/caminho/foto.jpg',
+    validate: v => (!v ? 'obrigatório' : undefined),
+  });
+  if (p.isCancel(raw)) return;
+
+  const s = p.spinner();
+  s.start('Copiando');
+  const result = await addMediaFromPath(raw);
+  s.stop(
+    result.ok
+      ? chalk.green(`${result.copied.length} arquivo(s) copiado(s)`)
+      : chalk.red(result.error || 'nada foi copiado')
+  );
+
+  if (result.copied.length) {
+    console.log();
+    console.log(chalk.bold('  Adicionados:'));
+    for (const c of result.copied) console.log(`    ${chalk.green('✓')}  ${c.name}`);
+  }
+  if (result.skipped.length) {
+    console.log();
+    console.log(chalk.bold('  Ignorados:'));
+    for (const s of result.skipped) console.log(`    ${chalk.yellow('⚠')}  ${s.name} ${chalk.dim(`(${s.reason})`)}`);
+  }
+  console.log();
+
+  const mais = await p.confirm({ message: 'Adicionar mais?', initialValue: false });
+  if (!p.isCancel(mais) && mais) return flowAdicionarMidia();
 }
 
 async function flowPausar() {

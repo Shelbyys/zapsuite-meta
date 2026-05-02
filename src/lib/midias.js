@@ -136,6 +136,90 @@ export function openMidiasFolder(sub = 'upload') {
   else                                    execSync(`xdg-open "${target}"`);
 }
 
+/**
+ * Normaliza o caminho colado pelo usuário.
+ * Mac: arrastar arquivo no Terminal cola com \ antes de espaços e às vezes
+ *      em aspas simples envolvendo tudo.
+ * Windows: clicar com botão direito → 'Copy as path' cola entre aspas duplas.
+ */
+export function normalizePastedPath(raw) {
+  if (!raw) return '';
+  let p = raw.trim();
+  // Tira aspas simples ou duplas envolvendo
+  if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
+    p = p.slice(1, -1);
+  }
+  // Tira escape de espaços do Mac (\  → espaço)
+  p = p.replace(/\\(.)/g, '$1');
+  // Expande ~ → home
+  if (p.startsWith('~')) {
+    p = path.join(process.env.HOME || '', p.slice(1));
+  }
+  return p;
+}
+
+/**
+ * Copia um arquivo (ou todos os de uma pasta) do path origem pra UPLOAD_DIR.
+ * Retorna { ok, copied: [{name, size}], skipped: [{name, reason}] }
+ */
+export async function addMediaFromPath(rawPath) {
+  await ensureMidiasFolders();
+  const sourcePath = normalizePastedPath(rawPath);
+
+  let stat;
+  try { stat = await fs.stat(sourcePath); }
+  catch { return { ok: false, copied: [], skipped: [], error: `arquivo/pasta não existe: ${sourcePath}` }; }
+
+  const candidates = [];
+  if (stat.isFile()) {
+    candidates.push(sourcePath);
+  } else if (stat.isDirectory()) {
+    const entries = await fs.readdir(sourcePath);
+    for (const e of entries) candidates.push(path.join(sourcePath, e));
+  } else {
+    return { ok: false, copied: [], skipped: [], error: 'tipo de path não suportado' };
+  }
+
+  const copied = [];
+  const skipped = [];
+
+  for (const src of candidates) {
+    const name = path.basename(src);
+    const ext  = path.extname(name).toLowerCase();
+    const isImage = IMG_EXT.has(ext);
+    const isVideo = VIDEO_EXT.has(ext);
+
+    if (!isImage && !isVideo) { skipped.push({ name, reason: `extensão não suportada (${ext || 'sem ext'})` }); continue; }
+
+    let st;
+    try { st = await fs.stat(src); } catch { skipped.push({ name, reason: 'não pôde ler' }); continue; }
+    if (!st.isFile())                   { skipped.push({ name, reason: 'não é arquivo' }); continue; }
+
+    const limit = isImage ? META_LIMITS.image.maxBytes : META_LIMITS.video.maxBytes;
+    if (st.size > limit)                { skipped.push({ name, reason: `acima do limite Meta (${humanSize(st.size)})` }); continue; }
+
+    // Não sobrescreve — adiciona sufixo se já existe
+    let dest = path.join(UPLOAD_DIR, name);
+    let n = 1;
+    while (true) {
+      try { await fs.access(dest); }
+      catch { break; }
+      const base = name.replace(/(\.[^.]+)?$/, '');
+      const e2 = path.extname(name);
+      dest = path.join(UPLOAD_DIR, `${base}-${++n}${e2}`);
+    }
+
+    try {
+      await fs.copyFile(src, dest);
+      copied.push({ name: path.basename(dest), size: st.size });
+    } catch (err) {
+      skipped.push({ name, reason: `erro ao copiar: ${err.message}` });
+    }
+  }
+
+  return { ok: copied.length > 0, copied, skipped };
+}
+
 function humanSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;

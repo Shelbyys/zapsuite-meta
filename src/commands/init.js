@@ -2,12 +2,13 @@ import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
 import { validateByEmail } from '../lib/licenca.js';
 import { patchConfig, ensureAppDir } from '../lib/config.js';
 import { isClaudeCodeInstalled, installClaudeCode, registerMetaMcp } from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
-import { DESKTOP_DIR } from '../lib/paths.js';
+import { DESKTOP_DIR, APP_DIR } from '../lib/paths.js';
 import { ensureMidiasFolders, MIDIAS_DIR } from '../lib/midias.js';
 import { logEvento, TIPO } from '../lib/telemetria.js';
 
@@ -175,23 +176,39 @@ export async function runInit() {
     limit: Number(budgetTeto),
   });
 
-  // ---------- 13. Final ----------
+  // ---------- 13. Conectar Facebook agora? ----------
+  const conectar = await p.confirm({
+    message: chalk.bold('Conectar sua conta do Facebook agora?') + chalk.dim(' (recomendado · ~1min · abre Claude Code)'),
+    initialValue: true,
+  });
+
+  // ---------- 14. Final (encerra clack antes de chamar claude) ----------
   p.outro(
     [
-      chalk.green.bold('Pronto!'),
+      chalk.green.bold('Setup concluído!'),
       '',
-      chalk.bold('Próximos passos:'),
-      '',
-      `  1. Coloque suas fotos/vídeos em ${chalk.cyan(MIDIAS_DIR + '/upload/')}`,
-      `     ${chalk.dim('(o menu tem opção pra abrir essa pasta)')}`,
-      `  2. Rode ${chalk.cyan('zsm')} ${chalk.dim('— ou clique no atalho do Desktop')}`,
-      `  3. Escolha ${chalk.cyan('🚀 Subir nova campanha')} no menu`,
-      `  4. Na primeira tool da Meta, o Claude Code abre o navegador pra você`,
-      `     ${chalk.dim('autorizar o Facebook (uma única vez).')}`,
-      '',
-      chalk.dim(`Atalho: Desktop → "ZapSuite Meta.command"`),
+      chalk.bold('Como usar:'),
+      `  • Rode ${chalk.cyan('zsm')} ou clique no atalho ${chalk.cyan('"ZapSuite Meta.command"')} no Desktop`,
+      `  • Coloque suas fotos/vídeos com ${chalk.cyan('📁 Minhas mídias → 📥 Adicionar')} (arrasta o arquivo pro terminal)`,
+      `  • Escolha ${chalk.cyan('🚀 Subir nova campanha')} pra subir uma estrutura validada`,
     ].join('\n')
   );
+
+  // Fora do Clack — agora é seguro rodar Claude Code
+  if (!p.isCancel(conectar) && conectar) {
+    if (!isClaudeCodeInstalled()) {
+      console.log(chalk.yellow('\n  Claude Code não tá instalado — pula a conexão. Roda `zsm doctor` depois.\n'));
+      return;
+    }
+    console.log(chalk.cyan('\n→ Abrindo Claude Code com /configurar-conta...\n'));
+    await new Promise(resolve => {
+      const child = spawn('claude', ['-p', '/configurar-conta'], { stdio: 'inherit', cwd: APP_DIR });
+      child.on('exit', () => resolve());
+      child.on('error', () => resolve());
+    });
+  } else {
+    console.log(chalk.dim('\n  Quando estiver pronto, escolha "🔌 Conectar conta Meta" no menu.\n'));
+  }
 }
 
 async function maybeCreateShortcut() {
