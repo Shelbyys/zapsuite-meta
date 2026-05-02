@@ -2,12 +2,13 @@
 
 Sistema turn-key de gestão de tráfego pago no Facebook/Instagram Ads via Claude Code. Sobe campanha completa a partir de playbooks validados, usando suas próprias fotos e vídeos — você só aprova.
 
-## Pré-requisitos
+## Pré-requisitos (faz 1 vez)
 
-- **Node.js 20+** — https://nodejs.org
-- **Claude Code instalado e logado** — `npm i -g @anthropic-ai/claude-code` + `claude` (uma vez pra autenticar)
-- **Assinatura Anthropic Pro/Team/Max** — `claude.ai`
-- **Email cadastrado na Easy4u** com licença ativa pro ZapSuite Meta
+1. **Node.js 20+** — https://nodejs.org
+2. **Claude Code instalado e logado** — `npm i -g @anthropic-ai/claude-code` + `claude` (uma vez pra autenticar)
+3. **Assinatura Anthropic Pro/Team/Max** — `claude.ai`
+4. **Conector Meta ativo** em [claude.ai/settings/connectors](https://claude.ai/settings/connectors) — clica em "Connect" no Meta, faz OAuth no Facebook
+5. **Email cadastrado na Easy4u** com licença ativa pro ZapSuite Meta
 
 ## Instalação (cliente final)
 

@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { showBanner } from '../lib/banner.js';
 import { loadConfig } from '../lib/config.js';
 import { isClaudeCodeInstalled, isClaudeCodeConfigured } from '../lib/claude-detect.js';
@@ -29,8 +28,7 @@ export async function runDoctor() {
   const mcp = await fileExists(path.join(APP_DIR, '.mcp.json'));
   checks.push(['.mcp.json gerado',                         mcp]);
 
-  const mcpRegistered = isMetaMcpRegistered();
-  checks.push(['MCP Meta registrado no Claude Code',       mcpRegistered]);
+  // Não checa mais MCP local — Meta vem do conector claude.ai/settings/connectors
 
   const agents = await dirCount(path.join(APP_DIR, '.claude/agents'));
   checks.push([`Agentes (${agents})`,                      agents > 0]);
@@ -68,19 +66,9 @@ export async function runDoctor() {
     console.log();
   }
 
-  if (!mcpRegistered) {
-    console.log(chalk.yellow('  Para registrar o MCP da Meta manualmente:'));
-    console.log(chalk.cyan('    claude mcp add --transport http --scope user meta https://mcp.facebook.com/ads\n'));
-  }
-}
-
-function isMetaMcpRegistered() {
-  try {
-    const out = execSync('claude mcp list 2>/dev/null', { encoding: 'utf8' });
-    return /meta\b/i.test(out) && /mcp\.facebook\.com/i.test(out);
-  } catch {
-    return false;
-  }
+  console.log(chalk.dim('  Conector Meta:'));
+  console.log(chalk.dim('    Ative em ') + chalk.cyan('https://claude.ai/settings/connectors'));
+  console.log(chalk.dim('    (necessário pra subir campanha · mesmo conector é usado pelo Claude Code local)\n'));
 }
 
 async function fileExists(p) {

@@ -10,7 +10,6 @@ import {
   isClaudeCodeInstalled,
   isClaudeCodeConfigured,
   installClaudeCode,
-  registerMetaMcp,
 } from '../lib/claude-detect.js';
 import { renderAll } from '../installer/render-templates.js';
 import { DESKTOP_DIR, APP_DIR } from '../lib/paths.js';
@@ -68,16 +67,44 @@ export async function runInit() {
       [
         'O Claude Code está instalado, mas você ainda não fez login com sua conta Anthropic.',
         '',
-        chalk.bold('Faça assim antes de continuar:'),
+        chalk.bold('Faça estes 2 passos antes de continuar:'),
         '',
-        `  1. Abra ${chalk.cyan('outro terminal')} ${chalk.dim('(ou outra aba)')}`,
-        `  2. Digite: ${chalk.cyan('claude')}`,
-        '  3. O navegador abre — faz login em claude.ai com sua conta Pro/Team/Max',
-        '  4. Volta aqui e roda de novo: ' + chalk.cyan('zsm init'),
+        `  ${chalk.cyan('1.')} Login no Claude Code:`,
+        `     Abre ${chalk.cyan('outro terminal')} → digita ${chalk.cyan('claude')}`,
+        `     O navegador abre — faz login em claude.ai com sua conta Pro/Team/Max`,
+        '',
+        `  ${chalk.cyan('2.')} Ativa o conector Meta em claude.ai:`,
+        `     Vai em ${chalk.cyan('https://claude.ai/settings/connectors')}`,
+        `     Procura ${chalk.bold('Meta')} → clica em ${chalk.bold('Connect')}`,
+        `     Faz OAuth no Facebook → autoriza tudo`,
+        `     Confirma que aparece ${chalk.green('"Connected"')}`,
+        '',
+        `  Volta aqui e roda de novo: ${chalk.cyan('zsm init')}`,
       ].join('\n'),
-      chalk.yellow('preciso do Claude Code logado')
+      chalk.yellow('faltam 2 passos antes')
     );
-    p.outro(chalk.dim('Setup pausado. Volta quando logar no Claude Code.'));
+    p.outro(chalk.dim('Setup pausado.'));
+    throw new Error('cancelled');
+  }
+
+  // Aviso sobre conector Meta no claude.ai (não tem como detectar daqui — é responsabilidade do cliente)
+  p.note(
+    [
+      'Pra subir campanha, você precisa do conector ' + chalk.bold('Meta') + ' ativo na sua conta Anthropic.',
+      '',
+      `Se ainda não ativou, vai em ${chalk.cyan('https://claude.ai/settings/connectors')} e conecta.`,
+      `Já ativou? Pode continuar.`,
+    ].join('\n'),
+    chalk.cyan('importante')
+  );
+
+  const conectorOk = await p.confirm({
+    message: 'Já ativou o conector Meta no claude.ai?',
+    initialValue: true,
+  });
+  if (p.isCancel(conectorOk)) throw new Error('cancelled');
+  if (!conectorOk) {
+    p.outro(chalk.dim('Beleza. Volta quando ativar — roda zsm init de novo.'));
     throw new Error('cancelled');
   }
 
@@ -145,46 +172,34 @@ export async function runInit() {
     produtosAtivosLabels: ['(a definir)'],
   });
 
-  // Registra MCP da Meta no Claude Code (agora que tá logado, deve passar)
-  const mcp = registerMetaMcp('user');
-  if (!mcp.ok) {
-    p.note(
-      `Não consegui registrar o MCP da Meta automaticamente.\nVocê pode rodar manualmente:\n  ${chalk.cyan('claude mcp add --transport http --scope user meta https://mcp.facebook.com/ads')}`,
-      chalk.yellow('atenção')
-    );
-  }
+  // (sem registerMetaMcp — Meta vem do conector claude.ai)
 
   // ============================================================
-  // FASE 3 · CONECTAR FACEBOOK (logo após email)
+  // FASE 3 · CONFIGURAR CONTA META (já que conector tá ativo)
   // ============================================================
   p.note(
     [
-      'Agora vou abrir o Claude Code pra você conectar sua conta do Facebook.',
-      'É um processo de 3 passos rápidos lá dentro.',
+      'Agora vou abrir o Claude Code pra confirmar qual conta de anúncios usar.',
+      'Como o conector Meta já tá ativo na sua Anthropic, ele vai listar suas contas',
+      'automaticamente — você só escolhe qual usar.',
     ].join('\n'),
-    chalk.cyan('próximo passo: Facebook')
+    chalk.cyan('próximo passo: escolher conta de anúncios')
   );
   const conectar = await p.confirm({ message: 'Abrir agora?', initialValue: true });
   if (p.isCancel(conectar)) throw new Error('cancelled');
 
-  // Encerra o Clack pra spawnar o Claude sem quebrar a UI
   p.outro(chalk.dim('Pausando setup — abrindo Claude Code...'));
 
   if (conectar) {
     console.log();
-    console.log(chalk.bold.bgCyan.black(' QUANDO O CLAUDE CODE ABRIR — DIGITE: '));
+    console.log(chalk.bold.bgCyan.black(' DENTRO DO CLAUDE CODE: '));
     console.log();
-    console.log(`  ${chalk.bold.cyan('1.')}  ${chalk.bold.cyan('/mcp')}`);
-    console.log(`      ${chalk.dim('Aparece a lista de servidores MCP. Procura "meta".')}`);
-    console.log(`      ${chalk.dim('Seleciona e ele abre o navegador pra você logar no Facebook.')}`);
-    console.log(`      ${chalk.dim('Autoriza tudo que ele pedir → fecha o navegador → volta no terminal.')}`);
-    console.log();
-    console.log(`  ${chalk.bold.cyan('2.')}  ${chalk.bold.cyan('/configurar-conta')}`);
-    console.log(`      ${chalk.dim('Ele lista suas contas de anúncios e pergunta qual usar.')}`);
+    console.log(`  ${chalk.bold.cyan('1.')}  Digite: ${chalk.bold.cyan('/configurar-conta')}`);
+    console.log(`      ${chalk.dim('Ele lista suas contas de anúncios da Meta e pergunta qual usar.')}`);
     console.log(`      ${chalk.dim('Confirma página, Instagram, forma de pagamento.')}`);
     console.log();
-    console.log(`  ${chalk.bold.cyan('3.')}  ${chalk.bold.cyan('/quit')} ${chalk.dim('(ou Ctrl+C 2x)')}`);
-    console.log(`      ${chalk.dim('Você volta aqui automaticamente pra finalizar o setup.')}`);
+    console.log(`  ${chalk.bold.cyan('2.')}  Quando terminar: ${chalk.bold.cyan('/quit')} ${chalk.dim('(ou Ctrl+C 2x)')}`);
+    console.log(`      ${chalk.dim('Você volta aqui automaticamente pra finalizar.')}`);
     console.log();
     console.log(chalk.dim('─────────────────────────────────────────────────'));
     console.log(chalk.cyan('Abrindo Claude Code em 3 segundos...'));
@@ -192,7 +207,7 @@ export async function runInit() {
     await new Promise(r => setTimeout(r, 3000));
 
     await new Promise(resolve => {
-      const child = spawn('claude', [], { stdio: 'inherit', cwd: APP_DIR });
+      const child = spawn('claude', ['/configurar-conta'], { stdio: 'inherit', cwd: APP_DIR });
       child.on('exit', () => resolve());
       child.on('error', err => {
         console.log(chalk.red(`\n  Erro: ${err.message}\n`));
@@ -201,7 +216,7 @@ export async function runInit() {
     });
     console.log(chalk.dim('\n← Voltando ao setup do ZapSuite Meta...\n'));
   } else {
-    console.log(chalk.dim('\n  Pulou Facebook — você pode conectar depois pelo menu.\n'));
+    console.log(chalk.dim('\n  Pulou — você pode configurar depois pelo menu.\n'));
   }
 
   // ============================================================
