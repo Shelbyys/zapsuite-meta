@@ -14,16 +14,16 @@ export async function runUpdate() {
     return;
   }
 
-  // 1) Checa npm
+  // 1) Checa GitHub Releases
   const s1 = p.spinner();
-  s1.start('Verificando se tem versão nova no npm');
+  s1.start('Verificando se tem versão nova no GitHub');
   const upd = await checkForUpdate();
   s1.stop(
     upd.reachable
       ? upd.hasUpdate
         ? chalk.yellow(`Versão nova: v${upd.latest} (você tá na v${upd.current})`)
         : chalk.green(`Você já tá na última: v${upd.current}`)
-      : chalk.dim(`Não consegui checar npm (offline?). Versão local: v${upd.current}`)
+      : chalk.dim(`Não consegui checar GitHub (offline?). Versão local: v${upd.current}`)
   );
 
   // 2) Se tem update, oferece npm i -g
@@ -34,14 +34,14 @@ export async function runUpdate() {
     });
     if (!p.isCancel(ok) && ok) {
       const s2 = p.spinner();
-      s2.start('Rodando npm i -g @zapsuite/meta@latest');
+      s2.start('Rodando npm i -g github:Shelbyys/zapsuite-meta');
       try {
         runNpmUpdate();
         s2.stop(chalk.green('Pacote atualizado.'));
       } catch (err) {
         s2.stop(chalk.red(`Falhou: ${err.message}`));
         p.note(
-          `Se deu permissão negada, tente:\n  ${chalk.cyan('sudo npm i -g @zapsuite/meta@latest')}`,
+          `Se deu permissão negada, tente:\n  ${chalk.cyan('sudo npm i -g github:Shelbyys/zapsuite-meta')}`,
           chalk.dim('dica')
         );
       }

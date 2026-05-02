@@ -3,8 +3,8 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { PKG_ROOT } from './paths.js';
 
-const PKG_NAME = '@zapsuite/meta';
-const NPM_REG = `https://registry.npmjs.org/${encodeURIComponent(PKG_NAME)}/latest`;
+const REPO = 'Shelbyys/zapsuite-meta';
+const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const CHECK_TIMEOUT_MS = 4000;
 
 export async function getCurrentVersion() {
@@ -12,14 +12,20 @@ export async function getCurrentVersion() {
   return pkg.version;
 }
 
+/**
+ * Busca a tag da última release no GitHub. Retorna 'v0.1.0' → '0.1.0', null se falhar.
+ */
 export async function getLatestVersion({ timeoutMs = CHECK_TIMEOUT_MS } = {}) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(NPM_REG, { signal: ctl.signal });
+    const res = await fetch(LATEST_RELEASE_API, {
+      signal: ctl.signal,
+      headers: { 'Accept': 'application/vnd.github+json' },
+    });
     if (!res.ok) return null;
     const j = await res.json();
-    return j.version || null;
+    return j.tag_name ? j.tag_name.replace(/^v/, '') : null;
   } catch {
     return null;
   } finally {
@@ -48,9 +54,12 @@ export async function checkForUpdate() {
   };
 }
 
+/**
+ * Instala/atualiza globalmente direto do GitHub.
+ * Pega o HEAD do main (que = última release tagueada).
+ */
 export function runNpmUpdate() {
-  // Atualiza o pacote globalmente. stdio:inherit pra cliente acompanhar.
-  execSync(`npm i -g ${PKG_NAME}@latest`, { stdio: 'inherit' });
+  execSync(`npm i -g github:${REPO}`, { stdio: 'inherit' });
 }
 
 const CACHE_KEY = 'lastUpdateCheck';
